@@ -186,9 +186,17 @@ def _serialize(record):
 
 
 def emit(record):
-    """Send one JSON record to CloudWatch (and the local JSONL mirror, if configured)."""
-    record.setdefault("ts", now_iso())
-    message = _serialize(record)
+    """Send one JSON record to CloudWatch (and the local JSONL mirror, if configured).
+
+    Never raises. The caller has already produced an answer for the user by this point, so no
+    logging problem - serialisation included - is worth turning into a failed request.
+    """
+    try:
+        record.setdefault("ts", now_iso())
+        message = _serialize(record)
+    except Exception as e:
+        print(f"[rag_logging] could not serialise event ({e})", file=sys.stderr)
+        return
     if LOCAL_LOG_FILE:
         try:
             with open(LOCAL_LOG_FILE, "a", encoding="utf-8") as f:

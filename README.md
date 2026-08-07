@@ -188,6 +188,18 @@ To try the pipeline without touching CloudWatch or IAM, set `PRV_LOG_GROUP=""` a
 > personal information into a Privacy Act Q&A box, consider lowering `PRV_LOG_ANSWER_CHARS`, or
 > disabling logging entirely, before exposing this publicly. Log retention defaults to 30 days.
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+
+pytest                      # offline only - no AWS calls, no cost (~1s)
+PRV_TEST_AWS=1 pytest       # everything, including Bedrock and CloudWatch (~1min)
+```
+
+AWS-backed tests skip by default, use a disposable `/privacy-act-rag/qa-test/*` log group that
+is deleted afterwards, and never rebuild the index. See [`tests/README.md`](tests/README.md).
+
 ## Deploying to Streamlit Community Cloud
 
 1. Push this repo to GitHub and create an app pointing at `rag_frontend.py`.
