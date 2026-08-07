@@ -3,19 +3,32 @@ import os
 import uuid
 import streamlit as st
 
+# Must be the first Streamlit command in the script - reading st.secrets below can emit one,
+# which would make set_page_config() fail if it came afterwards.
+st.set_page_config(page_title="Privacy Act Q&A with RAG")  ### Modify Heading
+
 # On Streamlit Community Cloud, AWS credentials live in st.secrets (set via the app's Settings ->
 # Secrets UI), not in a local ~/.aws/credentials file. Copy them into env vars so boto3's default
-# credential chain picks them up. Locally there's no secrets.toml, so st.secrets is empty and this
-# is a no-op - the existing ~/.aws/credentials [default] profile keeps working unchanged.
+# credential chain picks them up.
+#
+# Locally there is no secrets.toml, and st.secrets is NOT an empty mapping in that case - since
+# Streamlit 1.4x even `"key" in st.secrets` raises FileNotFoundError, which would kill the script
+# before any UI renders. Read it defensively so the local ~/.aws/credentials [default] profile
+# keeps working unchanged.
+try:
+    _secrets = dict(st.secrets)
+except Exception:
+    _secrets = {}
+
 for _key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "PRV_S3_BUCKET",
              "PRV_LOG_GROUP", "PRV_LOG_RETENTION_DAYS", "PRV_LOG_CHUNK_CHARS", "PRV_LOG_ANSWER_CHARS",
              "PRV_RETRIEVER_K"):
-    if _key in st.secrets:
-        os.environ[_key] = st.secrets[_key]
+    if _key in _secrets:
+        os.environ[_key] = str(_secrets[_key])  # TOML may type these as int; env vars must be str
 
+# Imported only after the secrets copy above: rag_backend and rag_logging read their
+# configuration from environment variables at import time.
 import rag_backend as demo  ### replace rag_backend with your backend filename
-
-st.set_page_config(page_title="Privacy Act Q&A with RAG")  ### Modify Heading
 
 new_title = '<p style="font-family:sans-serif; color:Green; font-size: 42px;">Privacy Act Q&A with RAG 🎯</p>'
 st.markdown(new_title, unsafe_allow_html=True)  ### Modify Title
