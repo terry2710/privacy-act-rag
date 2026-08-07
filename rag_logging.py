@@ -117,6 +117,16 @@ class _CloudWatchSink:
             self._broken = True
             print(f"[rag_logging] disabled: {message}", file=sys.stderr)
 
+    def _best_effort(self, action, call):
+        """Run an optional setup call. Reports failure but never disables the sink."""
+        try:
+            call()
+            return True
+        except Exception as e:
+            if type(e).__name__ != "ResourceAlreadyExistsException":
+                print(f"[rag_logging] {action} failed ({e}); continuing", file=sys.stderr)
+            return False
+
     def _ensure_stream(self):
         if self._ready:
             return True
@@ -127,21 +137,33 @@ class _CloudWatchSink:
                 return True
             try:
                 self._client = boto3.Session(region_name=AWS_REGION).client("logs")
-                try:
-                    self._client.create_log_group(logGroupName=LOG_GROUP)
-                    if RETENTION_DAYS > 0:
-                        self._client.put_retention_policy(
-                            logGroupName=LOG_GROUP, retentionInDays=RETENTION_DAYS)
-                except self._client.exceptions.ResourceAlreadyExistsException:
-                    pass
-                # One stream per process: date prefix sorts nicely, uuid keeps replicas apart.
-                self._stream = f"{datetime.now(timezone.utc):%Y/%m/%d}/{uuid.uuid4().hex[:12]}"
-                self._client.create_log_stream(logGroupName=LOG_GROUP, logStreamName=self._stream)
-                self._ready = True
-                return True
             except Exception as e:
-                self._warn_once(f"could not open log stream {LOG_GROUP} ({e})")
+                self._warn_once(f"could not create a logs client in {AWS_REGION} ({e})")
                 return False
+
+            # Creating the group and setting retention are optional. A least-privilege deployment
+            # role is commonly allowed to write into an existing group without holding
+            # CreateLogGroup or PutRetentionPolicy, and denying those must not switch logging off -
+            # only PutLogEvents is actually required to record a turn.
+            created = self._best_effort(
+                "create_log_group", lambda: self._client.create_log_group(logGroupName=LOG_GROUP))
+            if created and RETENTION_DAYS > 0:
+                self._best_effort("put_retention_policy", lambda: self._client.put_retention_policy(
+                    logGroupName=LOG_GROUP, retentionInDays=RETENTION_DAYS))
+
+            # One stream per process: date prefix sorts nicely, uuid keeps replicas apart.
+            self._stream = f"{datetime.now(timezone.utc):%Y/%m/%d}/{uuid.uuid4().hex[:12]}"
+            try:
+                self._client.create_log_stream(logGroupName=LOG_GROUP, logStreamName=self._stream)
+            except Exception as e:
+                # Region is named here because a misconfigured AWS_DEFAULT_REGION points the sink
+                # at an account/region where the group does not exist, and the error alone
+                # ("group does not exist") does not make that obvious.
+                self._warn_once(
+                    f"could not create a log stream in {LOG_GROUP} (region {AWS_REGION}): {e}")
+                return False
+            self._ready = True
+            return True
 
     def _put(self, message):
         if not self._ensure_stream():
@@ -154,7 +176,7 @@ class _CloudWatchSink:
                 logEvents=[{"timestamp": int(time.time() * 1000), "message": message}],
             )
         except Exception as e:
-            self._warn_once(f"put_log_events failed ({e})")
+            self._warn_once(f"put_log_events to {LOG_GROUP} (region {AWS_REGION}) failed ({e})")
 
     def submit(self, message):
         try:
