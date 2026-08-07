@@ -9,11 +9,12 @@ One JSON object per log event, so you can query it in CloudWatch Logs Insights, 
     # slowest turns
     | stats avg(llm_ms), max(llm_ms) by bin(1h)
 
-    # which chunks actually get retrieved, and how well they match
-    # (c.score is cosine similarity - higher is better; c.l2_sq is the raw FAISS distance)
-    | filter event = "qa"
-    | unnest chunks into c
-    | stats count(*), avg(c.score) by c.chunk_id, c.page
+    # retrieval quality - the chunks array is flattened to chunks.0.*, chunks.1.*, ...
+    # (unnest does not work on auto-discovered JSON arrays; it yields empty grouping keys).
+    # score is cosine similarity, so higher is better - always pin the schema, because
+    # qa/1 events logged score as squared L2 distance instead.
+    | filter event = "qa" and schema = "qa/2"
+    | stats count(*), avg(chunks.0.score) by chunks.0.chunk_id, chunks.0.page
 
 Configuration (all optional - env vars, or Streamlit secrets copied into env by the frontend):
     PRV_LOG_GROUP         CloudWatch log group. Default "/privacy-act-rag/qa". Set to "" to disable.

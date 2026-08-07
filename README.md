@@ -110,10 +110,11 @@ variables at startup so boto3 and the backend pick them up.
 
 ## Q&A logging
 
-`rag_logging.py` writes **one JSON object per Q&A turn**. Each event carries a `request_id`, the
-Streamlit `session_id` (so one browser session's turns group together), retrieval/LLM/total
-timings, token usage, stop reason, and per-chunk rank, score, page, source and text. Failures
-are logged as `event: "qa_error"` with the failing `stage` tagged, then re-raised unchanged.
+`rag_logging.py` writes **one JSON object per Q&A turn**, tagged `schema: "qa/2"`. Each event
+carries a `request_id`, the Streamlit `session_id` (so one browser session's turns group
+together), retrieval/LLM/total timings, token usage, stop reason, and per-chunk rank, `score`
+(cosine similarity), `l2_sq` (the raw FAISS distance), page, source and text. Failures are
+logged as `event: "qa_error"` with the failing `stage` tagged, then re-raised unchanged.
 
 Logging is **best-effort and asynchronous**: it runs on a background thread, creates the log
 group and stream lazily, and swallows every failure after a single stderr warning — a missing
@@ -124,7 +125,10 @@ the CloudWatch 256 KB per-event cap, and such events are flagged `size_capped: t
 
 ### Querying in Logs Insights
 
-The JSON fields are discovered automatically — no `parse` statement needed.
+The JSON fields are discovered automatically — no `parse` statement needed. The `chunks` array
+is flattened into indexed fields, so the top-ranked chunk is `chunks.0.score`, the second is
+`chunks.1.score`, and so on. (`unnest` does **not** work on these auto-discovered arrays — it
+returns empty grouping keys.)
 
 ```sql
 -- recent turns
@@ -133,17 +137,49 @@ fields @timestamp, question, total_ms, chunk_count, input_tokens, output_tokens
 | sort @timestamp desc
 
 -- latency trend
-| stats avg(llm_ms), max(llm_ms) by bin(1h)
-
--- which chunks actually get retrieved
-| filter event = "qa"
-| unnest chunks into c
-| stats count(*) by c.chunk_id, c.page
+filter event = "qa"
+| stats avg(llm_ms) as avg_llm_ms, max(llm_ms) as max_llm_ms by bin(1h)
 
 -- failures by stage
-| filter event = "qa_error"
+filter event = "qa_error"
 | stats count(*) by stage, error_type
 ```
+
+Retrieval quality, using the cosine `score` of the best-matching chunk:
+
+```sql
+-- how well the best chunk matched each question, worst first
+fields question, chunks.0.score as best_cosine, chunks.0.page as best_page
+| filter event = "qa" and schema = "qa/2"
+| sort best_cosine asc
+
+-- questions the corpus answers poorly - candidates for re-chunking or a bigger k
+fields question, chunks.0.score as best_cosine
+| filter event = "qa" and schema = "qa/2" and chunks.0.score < 0.6
+| sort best_cosine asc
+
+-- which chunks get retrieved most, and how strong those matches are
+filter event = "qa" and schema = "qa/2"
+| stats count(*) as hits, avg(chunks.0.score) as avg_cosine
+    by chunks.0.chunk_id as chunk, chunks.0.page as page
+| sort hits desc
+
+-- retrieval confidence over time
+filter event = "qa" and schema = "qa/2"
+| stats avg(chunks.0.score) as avg_best, min(chunks.0.score) as worst_best by bin(1h)
+
+-- score decay across the four retrieved ranks; a flat curve means k could be trimmed
+filter event = "qa" and schema = "qa/2"
+| stats avg(chunks.0.score) as r1, avg(chunks.1.score) as r2,
+        avg(chunks.2.score) as r3, avg(chunks.3.score) as r4
+```
+
+**Always filter on `schema = "qa/2"` when aggregating scores.** `qa/1` events logged `score` as
+squared L2 distance (lower = better); `qa/2` logs cosine similarity (higher = better). Averaging
+across both mixes two incompatible scales.
+
+As a reference point from a live run: an on-topic question scored `0.82` on its best chunk,
+while a deliberately off-topic one ("what is the recipe for chocolate cake?") scored `0.13`.
 
 To try the pipeline without touching CloudWatch or IAM, set `PRV_LOG_GROUP=""` and
 `PRV_QA_LOG_FILE=/tmp/qa.jsonl` — events go to the local file only.

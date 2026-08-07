@@ -169,7 +169,9 @@ def prv_rag_response(index, question, k=RETRIEVER_K, session_id=None):
 
     record = {
         "event": "qa",
-        "schema": "qa/1",
+        # qa/2 changed chunk "score" from squared L2 distance to cosine similarity and added
+        # "l2_sq". Filter on schema when aggregating scores so the two scales never mix.
+        "schema": "qa/2",
         "request_id": request_id,
         "session_id": session_id,
         "region": AWS_REGION,
