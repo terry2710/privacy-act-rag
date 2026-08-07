@@ -1,12 +1,15 @@
 # The below frontend code is provided by AWS and Streamlit. I have only modified it to make it look attractive.
 import os
+import uuid
 import streamlit as st
 
 # On Streamlit Community Cloud, AWS credentials live in st.secrets (set via the app's Settings ->
 # Secrets UI), not in a local ~/.aws/credentials file. Copy them into env vars so boto3's default
 # credential chain picks them up. Locally there's no secrets.toml, so st.secrets is empty and this
 # is a no-op - the existing ~/.aws/credentials [default] profile keeps working unchanged.
-for _key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "PRV_S3_BUCKET"):
+for _key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION", "PRV_S3_BUCKET",
+             "PRV_LOG_GROUP", "PRV_LOG_RETENTION_DAYS", "PRV_LOG_CHUNK_CHARS", "PRV_LOG_ANSWER_CHARS",
+             "PRV_RETRIEVER_K"):
     if _key in st.secrets:
         os.environ[_key] = st.secrets[_key]
 
@@ -16,6 +19,10 @@ st.set_page_config(page_title="Privacy Act Q&A with RAG")  ### Modify Heading
 
 new_title = '<p style="font-family:sans-serif; color:Green; font-size: 42px;">Privacy Act Q&A with RAG 🎯</p>'
 st.markdown(new_title, unsafe_allow_html=True)  ### Modify Title
+
+# Ties every Q&A log event from this browser session together in CloudWatch.
+if 'session_id' not in st.session_state:
+    st.session_state.session_id = uuid.uuid4().hex[:12]
 
 if 'vector_index' not in st.session_state:
     status_text = st.empty()
@@ -39,5 +46,6 @@ if go_button:
     with st.spinner(
             "📢Anytime someone tells me that I can't do something, I want to do it more - Taylor Swift"):  ### Spinner message
         response_content = demo.prv_rag_response(index=st.session_state.vector_index,
-                                                question=input_text)  ### replace with RAG Function from backend file
+                                                question=input_text,
+                                                session_id=st.session_state.session_id)  ### replace with RAG Function from backend file
         st.write(response_content)
