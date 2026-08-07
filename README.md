@@ -164,7 +164,13 @@ To try the pipeline without touching CloudWatch or IAM, set `PRV_LOG_GROUP=""` a
 
 ## Notes
 
-- FAISS scores are **L2 distances** — lower means more similar.
+- The index is `IndexFlatL2`, which returns **squared** L2 distance. Titan v2 normalises both
+  document and query embeddings to unit length, and for unit vectors
+  `‖q−d‖² = 2 − 2·cos(q,d)` — so L2 and cosine are an exact monotonic bijection here and rank
+  results identically (verified across all 860 vectors: Spearman correlation exactly 1.0).
+  The logger therefore reports `score` as cosine similarity (higher = better, `[0,1]` for text)
+  and keeps the raw distance alongside as `l2_sq`. If the embedding model is ever swapped for
+  one that does not normalise, rebuild with `MAX_INNER_PRODUCT` + `normalize_L2=True` instead.
 - The index is loaded with `allow_dangerous_deserialization=True`, which is required to read a
   FAISS pickle. Only load index files you produced yourself.
 - The source PDF is a dated compilation of the Privacy Act 1988 (compilation 104, dated
