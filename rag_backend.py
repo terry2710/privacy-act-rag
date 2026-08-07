@@ -1,5 +1,7 @@
 # 1. Import OS, Document Loader, Text Splitter, Bedrock Embeddings, Vector DB, Bedrock-LLM
 import os
+import shutil
+import sys
 import time
 import uuid
 import boto3
@@ -44,18 +46,45 @@ def _s3_client():
     return boto3.Session(region_name=AWS_REGION).client('s3')
 
 
+def _index_is_cached():
+    """True only if every file FAISS.save_local() writes is present and non-empty.
+
+    Checked instead of os.path.isdir(INDEX_DIR): a directory can exist while being empty or
+    half-written, and handing that to FAISS.load_local() raises out of faiss.read_index()
+    rather than falling back to a rebuild.
+    """
+    for filename in INDEX_FILES:
+        path = os.path.join(INDEX_DIR, filename)
+        if not os.path.isfile(path) or os.path.getsize(path) == 0:
+            return False
+    return True
+
+
 def _download_index_from_s3(report):
     if not S3_BUCKET:
         return False
     client = _s3_client()
-    os.makedirs(INDEX_DIR, exist_ok=True)
+    # Staged, then moved into place once every file has arrived. Downloading straight into
+    # INDEX_DIR left an empty directory behind whenever the transfer failed, which the loader
+    # then mistook for a usable cache.
+    staging = INDEX_DIR + ".partial"
+    shutil.rmtree(staging, ignore_errors=True)
+    os.makedirs(staging, exist_ok=True)
     try:
         for filename in INDEX_FILES:
-            client.download_file(S3_BUCKET, f"{S3_PREFIX}/{filename}", os.path.join(INDEX_DIR, filename))
+            client.download_file(S3_BUCKET, f"{S3_PREFIX}/{filename}", os.path.join(staging, filename))
+        shutil.rmtree(INDEX_DIR, ignore_errors=True)
+        os.rename(staging, INDEX_DIR)
         return True
     except Exception as e:
+        # Also to stderr: report() only reaches a transient Streamlit status line, so on a
+        # deployed app the reason for falling back to a full rebuild would otherwise be lost.
+        print(f"[rag_backend] could not restore the index from "
+              f"s3://{S3_BUCKET}/{S3_PREFIX} ({e})", file=sys.stderr)
         report(f"No cached index in S3 ({e})")
         return False
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
 
 
 def _upload_index_to_s3(report):
@@ -93,12 +122,12 @@ def prv_index(progress_callback=None, max_workers=1, min_interval=1):
         config=BEDROCK_CONFIG)
 
     # 0a. Local cache first (fastest, free) - if missing, try restoring from S3 before rebuilding.
-    if not os.path.isdir(INDEX_DIR):
+    if not _index_is_cached():
         report("Checking S3 for cached index")
         if _download_index_from_s3(report):
             report("Downloaded cached index from S3")
 
-    if os.path.isdir(INDEX_DIR):
+    if _index_is_cached():
         report("Loading cached index")
         db_index = FAISS.load_local(INDEX_DIR, data_embeddings, allow_dangerous_deserialization=True)
         report("Loaded cached index", 1, 1)
