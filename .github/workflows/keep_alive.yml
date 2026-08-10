@@ -2,14 +2,56 @@ name: Keep Streamlit App Alive
 
 on:
   schedule:
-    # Run every 10 minutes
-    - cron: '*/10 * * * *'
-  workflow_dispatch: # Allow manual trigger from Actions tab
+    # Run every hour to save GitHub Actions free quota
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
 
 jobs:
-  ping:
+  keep-alive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Streamlit App
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
         run: |
-          curl -s https://privacy-act-rag-fcyydcgfk54je2csqehgub.streamlit.app/ > /dev/null
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager
+
+      - name: Ping Streamlit app via Headless Chrome
+        run: |
+          python -c "
+          import time
+          from selenium import webdriver
+          from selenium.webdriver.chrome.service import Service
+          from selenium.webdriver.chrome.options import Options
+          from webdriver_manager.chrome import ChromeDriverManager
+
+          # Configure headless Chrome browser options
+          options = Options()
+          options.add_argument('--headless=new')
+          options.add_argument('--no-sandbox')
+          options.add_argument('--disable-dev-shm-usage')
+          options.add_argument('--disable-gpu')
+          options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+
+          print('Initializing Chrome browser...')
+          driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+          target_url = 'https://privacy-act-rag-fcyydcgfk54je2csqehgub.streamlit.app/'
+          print(f'Navigating to {target_url}...')
+          driver.get(target_url)
+
+          # Wait 15 seconds to allow React rendering and WebSocket connection initialization
+          print('Waiting for page rendering and WebSocket connection...')
+          time.sleep(15)
+
+          print(f'Page Title: {driver.title}')
+          print('Ping completed successfully.')
+          driver.quit()
+          "
