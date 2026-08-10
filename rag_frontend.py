@@ -37,6 +37,11 @@ st.markdown(new_title, unsafe_allow_html=True)  ### Modify Title
 if 'session_id' not in st.session_state:
     st.session_state.session_id = uuid.uuid4().hex[:12]
 
+    # --- Add Heartbeat Log for GitHub Actions ---
+    import datetime
+    print(f"[{datetime.datetime.now()}] 💡 App woke up or accessed! New Session ID: {st.session_state.session_id}")
+    # --------------------------------------------
+
 if 'vector_index' not in st.session_state:
     status_text = st.empty()
     progress_bar = st.progress(0)
