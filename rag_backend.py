@@ -192,7 +192,7 @@ def prv_llm():
 # 6b. Write a function which searches the user prompt, searches the best match from Vector DB and sends both to LLM.
 # Retrieval is called explicitly rather than piped into an LCEL chain (retriever | format_docs) so the
 # chunks - and their similarity scores - are in hand for the CloudWatch Q&A log.
-def prv_rag_response(index, question, k=RETRIEVER_K, session_id=None):
+def prv_rag_response(index, question, k=RETRIEVER_K, session_id=None, return_details=False):
     request_id = uuid.uuid4().hex
     started = time.perf_counter()
 
@@ -259,5 +259,7 @@ def prv_rag_response(index, question, k=RETRIEVER_K, session_id=None):
     )
     rag_logging.emit(record)
 
+    if return_details:
+        return answer, record
     return answer
 # Index creation --> https://python.langchain.com/docs/how_to/vectorstores/
