@@ -6,6 +6,7 @@ import gradio as gr
 import spaces
 
 import rag_backend
+import rag_evaluation
 
 
 _vector_index = None
@@ -71,6 +72,35 @@ def answer_question(question):
         return f"Request failed: {type(exc).__name__}: {exc}", "", []
 
 
+def run_retrieval_benchmark():
+    required = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        return "AWS configuration is missing: " + ", ".join(missing), []
+
+    try:
+        summary, results = rag_evaluation.evaluate_retrieval(get_index())
+    except Exception as exc:
+        return f"Benchmark failed: {type(exc).__name__}: {exc}", []
+
+    headline = (
+        f"## Hit@4: {summary['hits']}/{summary['cases']} ({summary['hit_rate']:.0%})"
+        f"\n\n**MRR:** {summary['mrr']:.3f}"
+    )
+    rows = [
+        [
+            result["id"],
+            result["result"],
+            result["first_rank"],
+            result["reciprocal_rank"],
+            result["top_cosine"],
+            result["question"],
+        ]
+        for result in results
+    ]
+    return headline, rows
+
+
 with gr.Blocks(title="Privacy Act RAG Evaluation Lab") as demo:
     gr.Markdown(
         """
@@ -99,10 +129,23 @@ Ask questions grounded in the Australian Privacy Act 1988.
                 value=[],
                 interactive=False,
             )
+        with gr.Tab("Benchmark"):
+            benchmark_button = gr.Button("Run retrieval benchmark", variant="primary")
+            benchmark_summary = gr.Markdown()
+            benchmark_results = gr.Dataframe(
+                headers=["Case", "Result", "First rank", "Reciprocal rank", "Top cosine", "Question"],
+                datatype=["str", "str", "number", "number", "number", "str"],
+                value=[],
+                interactive=False,
+            )
 
     outputs = [answer, evidence, diagnostics]
     ask_button.click(answer_question, inputs=question, outputs=outputs)
     question.submit(answer_question, inputs=question, outputs=outputs)
+    benchmark_button.click(
+        run_retrieval_benchmark,
+        outputs=[benchmark_summary, benchmark_results],
+    )
 
 
 if __name__ == "__main__":
