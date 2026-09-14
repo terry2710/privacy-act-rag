@@ -1,35 +1,30 @@
-"""Small, deterministic retrieval benchmark for the Privacy Act index."""
+"""Deterministic retrieval evaluation for the Privacy Act index."""
 
-DEFAULT_CASES = (
-    {
-        "id": "app-breach",
-        "question": "When does an act or practice breach an Australian Privacy Principle?",
-        "expected_terms": ("6a breach of an australian privacy principle",),
-    },
-    {
-        "id": "eligible-breach",
-        "question": "What is an eligible data breach?",
-        "expected_terms": (
-            "26we eligible data breach",
-            "likely to result in serious harm",
-        ),
-    },
-    {
-        "id": "breach-notice",
-        "question": "What information must an eligible data breach notification contain?",
-        "expected_terms": ("identity and contact details of the entity",),
-    },
-    {
-        "id": "app-11",
-        "question": "What does Australian Privacy Principle 11 require?",
-        "expected_terms": ("australian privacy principle 11", "app 11"),
-    },
-    {
-        "id": "app-12",
-        "question": "When must an APP entity give an individual access to personal information?",
-        "expected_terms": ("australian privacy principle 12", "app 12"),
-    },
-)
+import json
+from pathlib import Path
+
+
+DATASET_PATH = Path(__file__).parent / "data" / "retrieval_eval.json"
+
+
+def load_dataset(path=DATASET_PATH):
+    dataset = json.loads(Path(path).read_text(encoding="utf-8"))
+    cases = dataset.get("cases")
+    if not isinstance(cases, list) or not cases:
+        raise ValueError("retrieval evaluation dataset must contain a non-empty cases list")
+
+    required = {"id", "category", "question", "source_section", "expected_terms"}
+    for case in cases:
+        missing = required.difference(case)
+        if missing:
+            case_id = case.get("id", "<unknown>")
+            raise ValueError(f"evaluation case {case_id} is missing {sorted(missing)}")
+        if not case["expected_terms"]:
+            raise ValueError(f"evaluation case {case['id']} has no expected terms")
+    return dataset
+
+
+DEFAULT_CASES = tuple(load_dataset()["cases"])
 
 
 def _cosine_from_l2_sq(score):
@@ -59,7 +54,9 @@ def evaluate_retrieval(index, cases=DEFAULT_CASES, k=4):
         rows.append(
             {
                 "id": case["id"],
+                "category": case["category"],
                 "question": case["question"],
+                "source_section": case["source_section"],
                 "result": "Pass" if first_rank is not None else "Miss",
                 "first_rank": first_rank,
                 "reciprocal_rank": 1.0 / first_rank if first_rank else 0.0,
