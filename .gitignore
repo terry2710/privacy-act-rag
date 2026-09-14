@@ -1,0 +1,14 @@
+# Regenerated locally / restored from S3 - don't commit the (large) built index
+faiss_index/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Secrets - never commit AWS credentials or Streamlit secrets
+.streamlit/secrets.toml
+.env
+
+# IDE
+.idea/
