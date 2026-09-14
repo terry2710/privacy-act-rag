@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from rag_retrieval import HybridReranker
+
 
 DATASET_PATH = Path(__file__).parent / "data" / "retrieval_eval.json"
 
@@ -73,3 +75,62 @@ def evaluate_retrieval(index, cases=DEFAULT_CASES, k=4):
         "mrr": sum(row["reciprocal_rank"] for row in rows) / total if total else 0.0,
     }
     return summary, rows
+
+
+def compare_retrieval(index, cases=DEFAULT_CASES, k=4, candidate_k=50):
+    """Evaluate dense retrieval and hybrid reranking over the same embedded queries."""
+    reranker = HybridReranker(index, candidate_k=candidate_k)
+    dense_rows = []
+    hybrid_rows = []
+
+    for case in cases:
+        dense_results, hybrid_results = reranker.retrieve(case["question"], k=k)
+        dense_rows.append(_evaluate_case(case, dense_results))
+        hybrid_rows.append(_evaluate_case(case, hybrid_results))
+
+    dense_summary = _summarize(dense_rows)
+    hybrid_summary = _summarize(hybrid_rows)
+    rows = []
+    for dense, hybrid in zip(dense_rows, hybrid_rows):
+        rows.append(
+            {
+                **dense,
+                "dense_result": dense["result"],
+                "dense_rank": dense["first_rank"],
+                "hybrid_result": hybrid["result"],
+                "hybrid_rank": hybrid["first_rank"],
+            }
+        )
+    return dense_summary, hybrid_summary, rows
+
+
+def _evaluate_case(case, scored_docs):
+    expected_terms = tuple(_normalize_text(term) for term in case["expected_terms"])
+    first_rank = None
+    for rank, (doc, _) in enumerate(scored_docs, start=1):
+        text = _normalize_text(doc.page_content)
+        if any(term in text for term in expected_terms):
+            first_rank = rank
+            break
+
+    return {
+        "id": case["id"],
+        "category": case["category"],
+        "question": case["question"],
+        "source_section": case["source_section"],
+        "result": "Pass" if first_rank is not None else "Miss",
+        "first_rank": first_rank,
+        "reciprocal_rank": 1.0 / first_rank if first_rank else 0.0,
+        "top_cosine": _cosine_from_l2_sq(scored_docs[0][1]) if scored_docs else None,
+    }
+
+
+def _summarize(rows):
+    total = len(rows)
+    hits = sum(row["result"] == "Pass" for row in rows)
+    return {
+        "cases": total,
+        "hits": hits,
+        "hit_rate": hits / total if total else 0.0,
+        "mrr": sum(row["reciprocal_rank"] for row in rows) / total if total else 0.0,
+    }

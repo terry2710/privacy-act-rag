@@ -15,8 +15,8 @@ class FakeIndex:
 class RetrievalEvaluationTests(unittest.TestCase):
     def test_metrics_include_hits_misses_and_reciprocal_rank(self):
         cases = (
-            {"id": "hit", "question": "hit question", "expected_terms": ("target section",)},
-            {"id": "miss", "question": "miss question", "expected_terms": ("absent",)},
+            {"id": "hit", "category": "test", "source_section": "1", "question": "hit question", "expected_terms": ("target section",)},
+            {"id": "miss", "category": "test", "source_section": "2", "question": "miss question", "expected_terms": ("absent",)},
         )
         results = {
             "hit question": [
@@ -34,6 +34,15 @@ class RetrievalEvaluationTests(unittest.TestCase):
         self.assertEqual(rows[0]["first_rank"], 2)
         self.assertEqual(rows[0]["result"], "Pass")
         self.assertEqual(rows[1]["result"], "Miss")
+
+    def test_versioned_dataset_has_unique_labeled_cases(self):
+        dataset = rag_evaluation.load_dataset()
+        cases = dataset["cases"]
+
+        self.assertEqual(dataset["dataset_version"], "1.0")
+        self.assertEqual(len(cases), 25)
+        self.assertEqual(len({case["id"] for case in cases}), len(cases))
+        self.assertTrue(dataset["source_url"].startswith("https://www.legislation.gov.au/"))
 
     def test_empty_case_set_is_well_defined(self):
         summary, rows = rag_evaluation.evaluate_retrieval(FakeIndex({}), cases=(), k=4)

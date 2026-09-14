@@ -79,20 +79,25 @@ def run_retrieval_benchmark():
         return "AWS configuration is missing: " + ", ".join(missing), []
 
     try:
-        summary, results = rag_evaluation.evaluate_retrieval(get_index())
+        dense, hybrid, results = rag_evaluation.compare_retrieval(get_index())
     except Exception as exc:
         return f"Benchmark failed: {type(exc).__name__}: {exc}", []
 
     headline = (
-        f"## Hit@4: {summary['hits']}/{summary['cases']} ({summary['hit_rate']:.0%})"
-        f"\n\n**MRR:** {summary['mrr']:.3f}"
+        f"## Dense: {dense['hits']}/{dense['cases']} Hit@4 ({dense['hit_rate']:.0%}), "
+        f"MRR {dense['mrr']:.3f}"
+        f"\n\n## Hybrid: {hybrid['hits']}/{hybrid['cases']} Hit@4 "
+        f"({hybrid['hit_rate']:.0%}), MRR {hybrid['mrr']:.3f}"
     )
     rows = [
         [
             result["id"],
-            result["result"],
-            result["first_rank"],
-            result["reciprocal_rank"],
+            result["category"],
+            result["source_section"],
+            result["dense_result"],
+            result["dense_rank"],
+            result["hybrid_result"],
+            result["hybrid_rank"],
             result["top_cosine"],
             result["question"],
         ]
@@ -133,8 +138,8 @@ Ask questions grounded in the Australian Privacy Act 1988.
             benchmark_button = gr.Button("Run retrieval benchmark", variant="primary")
             benchmark_summary = gr.Markdown()
             benchmark_results = gr.Dataframe(
-                headers=["Case", "Result", "First rank", "Reciprocal rank", "Top cosine", "Question"],
-                datatype=["str", "str", "number", "number", "number", "str"],
+                headers=["Case", "Category", "Section", "Dense", "Dense rank", "Hybrid", "Hybrid rank", "Top cosine", "Question"],
+                datatype=["str", "str", "str", "str", "number", "str", "number", "number", "str"],
                 value=[],
                 interactive=False,
             )

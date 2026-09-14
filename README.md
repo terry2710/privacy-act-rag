@@ -24,7 +24,8 @@ retrieval benchmark, so retrieval quality can be measured instead of judged by d
 - Amazon Titan embeddings and a FAISS vector index cached in Amazon S3.
 - Amazon Nova Pro generation through Amazon Bedrock.
 - Source-level evidence with PDF pages, stable chunk IDs, and cosine similarity scores.
-- A repeatable five-case retrieval benchmark reporting Hit@4 and mean reciprocal rank (MRR).
+- A versioned 25-case retrieval benchmark reporting Hit@4 and mean reciprocal rank (MRR).
+- Dense versus BM25 reciprocal-rank-fusion comparison over the same embedded queries.
 - Structured Q&A telemetry in Amazon CloudWatch with latency and token usage.
 - A Gradio application deployed on Hugging Face Spaces.
 
@@ -39,12 +40,15 @@ retrieval benchmark, so retrieval quality can be measured instead of judged by d
 ## Retrieval evaluation
 
 Open the **Benchmark** tab and run the labeled test set. Each case identifies an expected
-Privacy Act provision and records its first retrieved rank.
+Privacy Act provision and records its first retrieved rank. The dataset is stored in
+[`data/retrieval_eval.json`](data/retrieval_eval.json) with its source compilation metadata.
 
 - **Hit@4**: proportion of cases where an expected provision appears in the top four chunks.
 - **MRR**: mean reciprocal rank of the first relevant chunk; higher values reward better ordering.
 
-The benchmark performs retrieval only. It does not invoke the answer-generation model.
+The benchmark performs retrieval only. It does not invoke the answer-generation model. Dense
+and hybrid results are shown side by side; the production answer path remains dense retrieval
+until the benchmark demonstrates that the reranker improves quality without regressions.
 
 ## Local setup
 
