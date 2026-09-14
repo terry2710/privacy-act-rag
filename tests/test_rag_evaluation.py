@@ -21,7 +21,7 @@ class RetrievalEvaluationTests(unittest.TestCase):
         results = {
             "hit question": [
                 (SimpleNamespace(page_content="unrelated"), 1.0),
-                (SimpleNamespace(page_content="The target section applies."), 0.4),
+                (SimpleNamespace(page_content="The target\n\n  section applies."), 0.4),
             ],
             "miss question": [(SimpleNamespace(page_content="unrelated"), 1.2)],
         }

@@ -33,17 +33,21 @@ def _cosine_from_l2_sq(score):
     return max(-1.0, min(1.0, 1.0 - float(score) / 2.0))
 
 
+def _normalize_text(text):
+    return " ".join(text.lower().split())
+
+
 def evaluate_retrieval(index, cases=DEFAULT_CASES, k=4):
     """Run labeled queries and return an aggregate summary plus per-case rows."""
     rows = []
 
     for case in cases:
         scored_docs = index.similarity_search_with_score(case["question"], k=k)
-        expected_terms = tuple(term.lower() for term in case["expected_terms"])
+        expected_terms = tuple(_normalize_text(term) for term in case["expected_terms"])
         first_rank = None
 
         for rank, (doc, _) in enumerate(scored_docs, start=1):
-            text = doc.page_content.lower()
+            text = _normalize_text(doc.page_content)
             if any(term in text for term in expected_terms):
                 first_rank = rank
                 break
