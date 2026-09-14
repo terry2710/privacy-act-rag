@@ -1,0 +1,256 @@
+{
+  "dataset_version": "1.0",
+  "source": "Privacy Act 1988, Compilation No. 104",
+  "compilation_date": "2026-06-04",
+  "source_url": "https://www.legislation.gov.au/C2004A03712/2026-06-04/2026-06-04/text/original/pdf",
+  "cases": [
+    {
+      "id": "app-breach",
+      "category": "interpretation",
+      "question": "When does an act or practice breach an Australian Privacy Principle?",
+      "source_section": "6A",
+      "expected_terms": [
+        "6a breach of an australian privacy principle"
+      ]
+    },
+    {
+      "id": "serious-interference",
+      "category": "enforcement",
+      "question": "When is an interference with an individual's privacy a civil penalty contravention?",
+      "source_section": "13G",
+      "expected_terms": [
+        "interference with privacy is serious",
+        "13g civil penalty provision"
+      ]
+    },
+    {
+      "id": "app-compliance",
+      "category": "app-framework",
+      "question": "What is the general duty of an APP entity under section 15?",
+      "source_section": "15",
+      "expected_terms": [
+        "app entities must comply with australian privacy principles",
+        "must not do an act, or engage in a practice, that breaches"
+      ]
+    },
+    {
+      "id": "app-1-policy",
+      "category": "app",
+      "question": "What privacy policy must an APP entity maintain?",
+      "source_section": "APP 1",
+      "expected_terms": [
+        "clearly expressed and up-to-date policy",
+        "australian privacy principle 1"
+      ]
+    },
+    {
+      "id": "app-2-anonymity",
+      "category": "app",
+      "question": "When may an individual deal anonymously or using a pseudonym?",
+      "source_section": "APP 2",
+      "expected_terms": [
+        "option of not identifying themselves",
+        "australian privacy principle 2"
+      ]
+    },
+    {
+      "id": "app-3-collection",
+      "category": "app",
+      "question": "When may an APP entity collect solicited personal information?",
+      "source_section": "APP 3",
+      "expected_terms": [
+        "collection of solicited personal information",
+        "reasonably necessary for, or directly related to"
+      ]
+    },
+    {
+      "id": "app-3-sensitive",
+      "category": "app",
+      "question": "What conditions apply when an APP entity collects sensitive information?",
+      "source_section": "APP 3.3",
+      "expected_terms": [
+        "must not collect sensitive information",
+        "individual consents to the collection"
+      ]
+    },
+    {
+      "id": "app-4-unsolicited",
+      "category": "app",
+      "question": "What must an APP entity do with unsolicited personal information?",
+      "source_section": "APP 4",
+      "expected_terms": [
+        "did not solicit the information",
+        "australian privacy principle 4"
+      ]
+    },
+    {
+      "id": "app-5-notification",
+      "category": "app",
+      "question": "When must an APP entity notify a person about collecting their personal information?",
+      "source_section": "APP 5",
+      "expected_terms": [
+        "notification of the collection of personal information",
+        "at or before the time or, if that is not practicable"
+      ]
+    },
+    {
+      "id": "app-6-secondary-use",
+      "category": "app",
+      "question": "When may personal information be used or disclosed for a secondary purpose?",
+      "source_section": "APP 6",
+      "expected_terms": [
+        "secondary purpose",
+        "australian privacy principle 6"
+      ]
+    },
+    {
+      "id": "app-7-opt-out",
+      "category": "app",
+      "question": "What opt-out mechanism is required for direct marketing?",
+      "source_section": "APP 7",
+      "expected_terms": [
+        "simple means by which the individual may easily request not to receive direct marketing",
+        "australian privacy principle 7"
+      ]
+    },
+    {
+      "id": "app-8-overseas",
+      "category": "app",
+      "question": "What must an APP entity do before disclosing personal information to an overseas recipient?",
+      "source_section": "APP 8",
+      "expected_terms": [
+        "overseas recipient",
+        "australian privacy principle 8"
+      ]
+    },
+    {
+      "id": "app-9-identifiers",
+      "category": "app",
+      "question": "May an organisation adopt a government related identifier as its own identifier?",
+      "source_section": "APP 9",
+      "expected_terms": [
+        "must not adopt a government related identifier",
+        "australian privacy principle 9"
+      ]
+    },
+    {
+      "id": "app-10-quality",
+      "category": "app",
+      "question": "What quality requirements apply when personal information is used or disclosed?",
+      "source_section": "APP 10",
+      "expected_terms": [
+        "accurate, up-to-date, complete and relevant",
+        "australian privacy principle 10"
+      ]
+    },
+    {
+      "id": "app-11-security",
+      "category": "app",
+      "question": "How must an APP entity protect personal information?",
+      "source_section": "APP 11.1",
+      "expected_terms": [
+        "misuse, interference and loss",
+        "unauthorised access, modification or disclosure"
+      ]
+    },
+    {
+      "id": "app-11-destruction",
+      "category": "app",
+      "question": "What should an APP entity do with personal information it no longer needs?",
+      "source_section": "APP 11.2",
+      "expected_terms": [
+        "destroy the information or to ensure that the information is de-identified"
+      ]
+    },
+    {
+      "id": "app-12-access",
+      "category": "app",
+      "question": "When must an APP entity give an individual access to personal information?",
+      "source_section": "APP 12",
+      "expected_terms": [
+        "on request by the individual, give the individual access",
+        "australian privacy principle 12"
+      ]
+    },
+    {
+      "id": "app-12-refusal",
+      "category": "app",
+      "question": "What notice must be provided when an APP entity refuses access to personal information?",
+      "source_section": "APP 12.5",
+      "expected_terms": [
+        "mechanisms available to complain about the refusal",
+        "reasons for the refusal"
+      ]
+    },
+    {
+      "id": "app-13-correction",
+      "category": "app",
+      "question": "When must an APP entity correct personal information?",
+      "source_section": "APP 13",
+      "expected_terms": [
+        "inaccurate, out-of-date, incomplete, irrelevant or misleading",
+        "australian privacy principle 13"
+      ]
+    },
+    {
+      "id": "ndb-eligible-breach",
+      "category": "data-breach",
+      "question": "What is an eligible data breach?",
+      "source_section": "26WE",
+      "expected_terms": [
+        "26we eligible data breach",
+        "likely to result in serious harm"
+      ]
+    },
+    {
+      "id": "ndb-remedial-action",
+      "category": "data-breach",
+      "question": "When can remedial action mean an access or disclosure is not an eligible data breach?",
+      "source_section": "26WF",
+      "expected_terms": [
+        "26wf exception\u2014remedial action",
+        "taken never to have been"
+      ]
+    },
+    {
+      "id": "ndb-serious-harm",
+      "category": "data-breach",
+      "question": "What matters determine whether access or disclosure is likely to result in serious harm?",
+      "source_section": "26WG",
+      "expected_terms": [
+        "26wg whether access or disclosure would be likely",
+        "security technology or methodology"
+      ]
+    },
+    {
+      "id": "ndb-assessment",
+      "category": "data-breach",
+      "question": "How quickly must a suspected eligible data breach be assessed?",
+      "source_section": "26WH",
+      "expected_terms": [
+        "completed within 30 days",
+        "26wh assessment of suspected eligible data breach"
+      ]
+    },
+    {
+      "id": "ndb-statement",
+      "category": "data-breach",
+      "question": "What information must an eligible data breach statement contain?",
+      "source_section": "26WK",
+      "expected_terms": [
+        "identity and contact details of the entity",
+        "26wk statement about eligible data breach"
+      ]
+    },
+    {
+      "id": "ndb-notification",
+      "category": "data-breach",
+      "question": "What must an entity do to notify individuals about an eligible data breach?",
+      "source_section": "26WL",
+      "expected_terms": [
+        "26wl entity must notify eligible data breach",
+        "notify the contents of the statement"
+      ]
+    }
+  ]
+}
