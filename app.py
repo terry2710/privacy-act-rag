@@ -23,7 +23,11 @@ def get_index():
     return _vector_index
 
 
-@spaces.GPU(duration=120)
+@spaces.GPU(duration=1)
+def zero_gpu_probe():
+    return "ready"
+
+
 def answer_question(question):
     question = (question or "").strip()
     if not question:
