@@ -87,6 +87,9 @@ def test_question_and_model_metadata(turn):
     assert e["k"] == 3
     assert e["model_id"] == rag_backend.LLM_MODEL_ID
     assert e["embedding_model_id"] == rag_backend.EMBEDDING_MODEL_ID
+    assert e["pipeline_version"] == "fixed-dense-v1"
+    assert e["retrieval_strategy"] == "dense"
+    assert e["chunking_strategy"] == "recursive-character-1500-overlap-200"
 
 
 def test_timings_are_consistent(turn):
@@ -223,6 +226,24 @@ def test_oversized_event_is_shrunk_below_the_cloudwatch_cap(tmp_path, stub_llm):
 def test_normal_event_is_not_flagged_as_capped(turn):
     _, e, _ = turn
     assert e.get("size_capped") is None
+
+
+def test_feedback_is_linked_to_qa_turn(jsonl_logging):
+    record = rag_logging.emit_feedback("req-123", "sess-abc", "not_helpful")
+
+    event = jsonl_logging.read_events()[0]
+    assert event == {**record, "ts": event["ts"]}
+    assert event["event"] == "feedback"
+    assert event["schema"] == "feedback/1"
+    assert event["request_id"] == "req-123"
+    assert event["session_id"] == "sess-abc"
+    assert event["rating"] == "not_helpful"
+
+
+def test_feedback_rejects_invalid_rating(jsonl_logging):
+    with pytest.raises(ValueError, match="rating"):
+        rag_logging.emit_feedback("req-123", "sess-abc", "maybe")
+    assert jsonl_logging.read_events() == []
 
 
 def test_logging_failure_cannot_break_a_turn(jsonl_logging, stub_llm, monkeypatch, capsys):

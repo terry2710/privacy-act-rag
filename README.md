@@ -27,6 +27,8 @@ retrieval benchmark, so retrieval quality can be measured instead of judged by d
 - A versioned 25-case retrieval benchmark reporting Hit@4 and mean reciprocal rank (MRR).
 - Dense versus BM25 reciprocal-rank-fusion comparison over the same embedded queries.
 - Structured Q&A telemetry in Amazon CloudWatch with latency and token usage.
+- Answer-level user feedback linked to the originating request for production error analysis.
+- GitHub Actions CI/CD that tests every change before deploying `main` to Hugging Face Spaces.
 - A Gradio application deployed on Hugging Face Spaces.
 
 ## Request flow
@@ -36,6 +38,7 @@ retrieval benchmark, so retrieval quality can be measured instead of judged by d
 3. Send only the retrieved context and question to the generation model.
 4. Return the answer, evidence, and retrieval diagnostics.
 5. Emit a structured best-effort telemetry event without blocking the response.
+6. Capture Helpful/Not helpful feedback using the same request and browser-session identifiers.
 
 ## Retrieval evaluation
 
@@ -49,6 +52,15 @@ Privacy Act provision and records its first retrieved rank. The dataset is store
 The benchmark performs retrieval only. It does not invoke the answer-generation model. Dense
 and hybrid results are shown side by side; the production answer path remains dense retrieval
 until the benchmark demonstrates that the reranker improves quality without regressions.
+
+## Delivery workflow
+
+GitHub is the source of truth. Pull requests and pushes run the offline test suite. A successful
+push to `main` is then deployed to the Hugging Face Space by `.github/workflows/ci.yml`.
+
+Add a write-enabled Hugging Face token to the GitHub repository as an Actions secret named
+`HF_TOKEN`. After that, normal development only needs a push to GitHub; the workflow performs
+the test gate and Space deployment. AWS-backed tests remain opt-in and never run in CI.
 
 ## Local setup
 

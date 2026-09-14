@@ -49,27 +49,50 @@ def format_evidence(chunks):
     return "\n\n---\n\n".join(sections), rows
 
 
-def answer_question(question):
+def new_session_id():
+    return uuid.uuid4().hex[:12]
+
+
+def answer_question(question, session_id):
     question = (question or "").strip()
     if not question:
-        return "Please enter a question.", "", []
+        return "Please enter a question.", "", [], None, ""
 
     required = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY")
     missing = [name for name in required if not os.environ.get(name)]
     if missing:
-        return "AWS configuration is missing: " + ", ".join(missing), "", []
+        return "AWS configuration is missing: " + ", ".join(missing), "", [], None, ""
 
     try:
+        session_id = session_id or new_session_id()
         answer, details = rag_backend.prv_rag_response(
             index=get_index(),
             question=question,
-            session_id=uuid.uuid4().hex[:12],
+            session_id=session_id,
             return_details=True,
         )
         evidence, rows = format_evidence(details.get("chunks", []))
-        return answer, evidence, rows
+        turn = {
+            "request_id": details["request_id"],
+            "session_id": session_id,
+        }
+        return answer, evidence, rows, turn, ""
     except Exception as exc:
-        return f"Request failed: {type(exc).__name__}: {exc}", "", []
+        return f"Request failed: {type(exc).__name__}: {exc}", "", [], None, ""
+
+
+def submit_feedback(turn, rating):
+    if not turn or not turn.get("request_id"):
+        return "Ask a question before submitting feedback."
+    try:
+        rag_backend.rag_logging.emit_feedback(
+            request_id=turn["request_id"],
+            session_id=turn.get("session_id"),
+            rating=rating,
+        )
+        return "Feedback recorded."
+    except Exception as exc:
+        return f"Feedback failed: {type(exc).__name__}: {exc}"
 
 
 def run_retrieval_benchmark():
@@ -107,6 +130,8 @@ def run_retrieval_benchmark():
 
 
 with gr.Blocks(title="Privacy Act RAG Evaluation Lab") as demo:
+    session_id = gr.State()
+    current_turn = gr.State()
     gr.Markdown(
         """
 # Privacy Act RAG Evaluation Lab
@@ -125,6 +150,10 @@ Ask questions grounded in the Australian Privacy Act 1988.
     with gr.Tabs():
         with gr.Tab("Answer"):
             answer = gr.Markdown()
+            with gr.Row():
+                helpful_button = gr.Button("Helpful", size="sm")
+                not_helpful_button = gr.Button("Not helpful", size="sm")
+            feedback_status = gr.Markdown()
         with gr.Tab("Evidence"):
             evidence = gr.Markdown()
         with gr.Tab("Diagnostics"):
@@ -144,13 +173,24 @@ Ask questions grounded in the Australian Privacy Act 1988.
                 interactive=False,
             )
 
-    outputs = [answer, evidence, diagnostics]
-    ask_button.click(answer_question, inputs=question, outputs=outputs)
-    question.submit(answer_question, inputs=question, outputs=outputs)
+    outputs = [answer, evidence, diagnostics, current_turn, feedback_status]
+    ask_button.click(answer_question, inputs=[question, session_id], outputs=outputs)
+    question.submit(answer_question, inputs=[question, session_id], outputs=outputs)
+    helpful_button.click(
+        lambda turn: submit_feedback(turn, "helpful"),
+        inputs=current_turn,
+        outputs=feedback_status,
+    )
+    not_helpful_button.click(
+        lambda turn: submit_feedback(turn, "not_helpful"),
+        inputs=current_turn,
+        outputs=feedback_status,
+    )
     benchmark_button.click(
         run_retrieval_benchmark,
         outputs=[benchmark_summary, benchmark_results],
     )
+    demo.load(new_session_id, outputs=session_id)
 
 
 if __name__ == "__main__":

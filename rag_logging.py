@@ -229,6 +229,24 @@ def emit(record):
         _sink.submit(message)
 
 
+def emit_feedback(request_id, session_id, rating):
+    """Log explicit user feedback against one completed Q&A turn."""
+    if rating not in {"helpful", "not_helpful"}:
+        raise ValueError("rating must be 'helpful' or 'not_helpful'")
+    if not request_id:
+        raise ValueError("request_id is required")
+
+    record = {
+        "event": "feedback",
+        "schema": "feedback/1",
+        "request_id": request_id,
+        "session_id": session_id,
+        "rating": rating,
+    }
+    emit(record)
+    return record
+
+
 def describe_chunks(scored_docs):
     """Turn [(Document, score), ...] from FAISS into the JSON-safe chunk list we log."""
     chunks = []

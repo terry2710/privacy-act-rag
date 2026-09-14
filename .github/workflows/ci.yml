@@ -1,0 +1,44 @@
+name: Test and deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Compile Python modules
+        run: python -m py_compile app.py rag_backend.py rag_evaluation.py rag_logging.py rag_retrieval.py
+      - name: Run offline tests
+        run: pytest -m "not aws and not index"
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    concurrency:
+      group: hugging-face-production
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Deploy tested commit to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          test -n "$HF_TOKEN" || (echo "HF_TOKEN repository secret is missing" && exit 1)
+          git push "https://greecehalf:${HF_TOKEN}@huggingface.co/spaces/greecehalf/privacy-act-rag-evaluation-lab.git" HEAD:main

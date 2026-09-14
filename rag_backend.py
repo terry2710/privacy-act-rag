@@ -40,6 +40,8 @@ EMBEDDING_MODEL_ID = "amazon.titan-embed-text-v2:0"
 LLM_MODEL_ID = "amazon.nova-pro-v1:0"
 # How many chunks to retrieve per question (LangChain's as_retriever() default was 4).
 RETRIEVER_K = int(os.environ.get("PRV_RETRIEVER_K", "4"))
+# Logged on every turn so production feedback can be tied to the exact RAG configuration.
+PIPELINE_VERSION = os.environ.get("PRV_PIPELINE_VERSION", "fixed-dense-v1")
 
 
 def _s3_client():
@@ -206,6 +208,9 @@ def prv_rag_response(index, question, k=RETRIEVER_K, session_id=None, return_det
         "region": AWS_REGION,
         "model_id": LLM_MODEL_ID,
         "embedding_model_id": EMBEDDING_MODEL_ID,
+        "pipeline_version": PIPELINE_VERSION,
+        "retrieval_strategy": "dense",
+        "chunking_strategy": "recursive-character-1500-overlap-200",
         "question": question,
         "question_chars": len(question or ""),
         "k": k,
