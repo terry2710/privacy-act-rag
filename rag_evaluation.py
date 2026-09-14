@@ -9,7 +9,10 @@ DEFAULT_CASES = (
     {
         "id": "eligible-breach",
         "question": "What is an eligible data breach?",
-        "expected_terms": ("26we eligible data breach",),
+        "expected_terms": (
+            "26we eligible data breach",
+            "likely to result in serious harm",
+        ),
     },
     {
         "id": "breach-notice",
