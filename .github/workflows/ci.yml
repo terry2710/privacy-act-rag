@@ -24,6 +24,13 @@ jobs:
         run: python -m py_compile app.py rag_backend.py rag_evaluation.py rag_logging.py rag_retrieval.py
       - name: Run offline tests
         run: pytest -m "not aws and not index"
+      - name: Cache Hugging Face model weights
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-bge-base-en-v1.5
+      - name: Retrieval regression gate (free - open embeddings, no AWS calls)
+        run: python check_eval_regression.py
 
   deploy:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

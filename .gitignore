@@ -1,5 +1,10 @@
 # Regenerated locally / restored from S3 - don't commit the (large) built index
-faiss_index/
+# (faiss_index*/ covers the default and every provider-namespaced variant, e.g.
+# faiss_index_bge/ from the open-embedding comparison and CI regression gate)
+faiss_index*/
+
+# Pulled fresh from CloudWatch by feedback_review.py on every run - never commit it
+data/feedback_queue.json
 
 # Python
 __pycache__/
