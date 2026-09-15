@@ -18,13 +18,24 @@ from langchain_core.output_parsers import StrOutputParser
 import rag_logging
 
 
-INDEX_DIR = "faiss_index"
+# Embedding provider switch used to compare the production Titan embeddings against an open
+# sentence-transformers model (roadmap step 1.1 - open-vs-proprietary embedding comparison).
+# "bedrock" is the unchanged default; set PRV_EMBEDDING_PROVIDER=bge to build/evaluate the open
+# model instead. Nothing about the "bedrock" path below changes when this var is left unset.
+EMBEDDING_PROVIDER = os.environ.get("PRV_EMBEDDING_PROVIDER", "bedrock")
+OPEN_EMBEDDING_MODEL_ID = os.environ.get("PRV_OPEN_EMBEDDING_MODEL_ID", "BAAI/bge-base-en-v1.5")
+
+# Namespaced by provider so switching providers can never load a FAISS index that was built
+# with a different (and dimensionally incompatible) embedding model. The default "bedrock"
+# path keeps the exact directory/prefix names already used in production.
+_INDEX_SUFFIX = "" if EMBEDDING_PROVIDER == "bedrock" else f"_{EMBEDDING_PROVIDER}"
+INDEX_DIR = f"faiss_index{_INDEX_SUFFIX}"
 INDEX_FILES = ["index.faiss", "index.pkl"]  # the two files FAISS.save_local() writes
 
 # Set PRV_S3_BUCKET to enable S3 backup/restore of the index (e.g. "privacy-act-rag-index").
 # Leave unset to use local-disk caching only.
 S3_BUCKET = os.environ.get("PRV_S3_BUCKET", "")
-S3_PREFIX = "faiss_index"
+S3_PREFIX = f"faiss_index{_INDEX_SUFFIX}"
 
 # No hardcoded profile name: boto3's default credential chain checks env vars first
 # (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY - what Streamlit Cloud secrets get copied into),
@@ -110,6 +121,30 @@ BEDROCK_CONFIG = Config(
 )
 
 
+def _make_embeddings():
+    """Return a LangChain-compatible embeddings object for EMBEDDING_PROVIDER.
+
+    "bedrock" (default): unchanged production path, Amazon Titan Embed v2 via Bedrock.
+    "bge": open sentence-transformers model used for the open-vs-proprietary comparison in
+        roadmap step 1.1. Runs on CPU, no AWS calls. normalize_embeddings=True keeps the
+        cosine-from-L2 conversion in rag_logging.cosine_from_l2_sq valid (see its docstring) -
+        BGE, like Titan v2, must be unit-normalised for that shortcut to hold.
+    """
+    if EMBEDDING_PROVIDER == "bedrock":
+        return BedrockEmbeddings(
+            region_name=AWS_REGION,
+            model_id=EMBEDDING_MODEL_ID,
+            config=BEDROCK_CONFIG)
+    if EMBEDDING_PROVIDER == "bge":
+        from langchain_huggingface import HuggingFaceEmbeddings  # heavy (torch); imported lazily
+        return HuggingFaceEmbeddings(
+            model_name=OPEN_EMBEDDING_MODEL_ID,
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={"normalize_embeddings": True},
+        )
+    raise ValueError(f"Unknown PRV_EMBEDDING_PROVIDER: {EMBEDDING_PROVIDER!r}")
+
+
 # 5b. Wrap within a function
 def prv_index(progress_callback=None, max_workers=1, min_interval=1):
     # progress_callback(stage: str, done: int | None, total: int | None) -> None, called at each step.
@@ -118,10 +153,7 @@ def prv_index(progress_callback=None, max_workers=1, min_interval=1):
             progress_callback(stage, done, total)
 
     # 4. Create Embeddings -- Client connection
-    data_embeddings = BedrockEmbeddings(
-        region_name=AWS_REGION,
-        model_id=EMBEDDING_MODEL_ID,
-        config=BEDROCK_CONFIG)
+    data_embeddings = _make_embeddings()
 
     # 0a. Local cache first (fastest, free) - if missing, try restoring from S3 before rebuilding.
     if not _index_is_cached():
@@ -145,30 +177,42 @@ def prv_index(progress_callback=None, max_workers=1, min_interval=1):
     data_split = RecursiveCharacterTextSplitter(separators=["\n\n", "\n", " ", ""], chunk_size=1500, chunk_overlap=200)
     chunks = data_split.split_documents(documents)
 
-    # 5a. Embed chunks concurrently (embedding is network I/O, so threads help) and report progress as they land.
+    # 5a. Embed chunks. Bedrock enforces a per-account requests/min quota, so that path embeds
+    # one chunk at a time across a small thread pool with a pacing sleep between calls. Open
+    # sentence-transformers models run locally with nothing to rate-limit, so a single batched
+    # call is both simpler and far faster than the same one-by-one loop would be.
     total = len(chunks)
     texts = [chunk.page_content for chunk in chunks]
     metadatas = [chunk.metadata for chunk in chunks]
-    vectors = [None] * total
-    done = 0
     report("Embedding", 0, total)
 
-    def embed_one(i):
-        vector = data_embeddings.embed_query(texts[i])
-        time.sleep(min_interval)  # small pacing gap as extra insurance against bursting the rate limit
-        return i, vector
+    if EMBEDDING_PROVIDER == "bedrock":
+        vectors = [None] * total
+        done = 0
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(embed_one, i) for i in range(total)]
+        def embed_one(i):
+            vector = data_embeddings.embed_query(texts[i])
+            time.sleep(min_interval)  # small pacing gap as extra insurance against bursting the rate limit
+            return i, vector
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(embed_one, i) for i in range(total)]
+            try:
+                for future in as_completed(futures):
+                    i, vector = future.result()
+                    vectors[i] = vector
+                    done += 1
+                    report("Embedding", done, total)
+            except Exception as e:
+                report(f"Embedding failed after {done}/{total} ({e})")
+                raise
+    else:
         try:
-            for future in as_completed(futures):
-                i, vector = future.result()
-                vectors[i] = vector
-                done += 1
-                report("Embedding", done, total)
+            vectors = data_embeddings.embed_documents(texts)
         except Exception as e:
-            report(f"Embedding failed after {done}/{total} ({e})")
+            report(f"Embedding failed ({e})")
             raise
+        report("Embedding", total, total)
 
     # 5b. Build the Vector DB from the pre-computed embeddings, then cache it to disk and S3.
     db_index = FAISS.from_embeddings(list(zip(texts, vectors)), data_embeddings, metadatas=metadatas)
@@ -207,7 +251,7 @@ def prv_rag_response(index, question, k=RETRIEVER_K, session_id=None, return_det
         "session_id": session_id,
         "region": AWS_REGION,
         "model_id": LLM_MODEL_ID,
-        "embedding_model_id": EMBEDDING_MODEL_ID,
+        "embedding_model_id": EMBEDDING_MODEL_ID if EMBEDDING_PROVIDER == "bedrock" else OPEN_EMBEDDING_MODEL_ID,
         "pipeline_version": PIPELINE_VERSION,
         "retrieval_strategy": "dense",
         "chunking_strategy": "recursive-character-1500-overlap-200",

@@ -1,0 +1,11 @@
+# Only for the open-embedding tooling (compare_embeddings.py, check_eval_regression.py) and
+# the CI regression gate - never installed by either production frontend (app.py on the HF
+# Space, rag_frontend.py on Streamlit Community Cloud both install only requirements.txt).
+#
+# sentence-transformers pulls in torch as a transitive dependency, which is large and slow to
+# install. Both frontends share requirements.txt (Streamlit Cloud and the HF Space both deploy
+# from this same repo/main branch), so keeping these out of it means neither production
+# deployment's build ever has to install torch - only CI and a developer's local venv do, when
+# they actually run the open-embedding path.
+sentence-transformers
+langchain-huggingface
