@@ -53,6 +53,36 @@ The benchmark performs retrieval only. It does not invoke the answer-generation 
 and hybrid results are shown side by side; the production answer path remains dense retrieval
 until the benchmark demonstrates that the reranker improves quality without regressions.
 
+### Open-vs-proprietary embedding comparison
+
+`compare_embeddings.py` builds a second FAISS index with an open sentence-transformers model and
+runs it through the same 25-case benchmark, so the production Titan embeddings can be compared
+against an open alternative without touching the production index or cache:
+
+```bash
+python compare_embeddings.py                                  # builds/evaluates BAAI/bge-base-en-v1.5
+PRV_EMBEDDING_PROVIDER=bedrock python compare_embeddings.py    # re-run the Titan path (needs AWS creds)
+```
+
+| Embedding | Hit@4 | MRR |
+|---|---:|---:|
+| `amazon.titan-embed-text-v2:0` (production) | 22/25 (88.0%) | 0.670 |
+| `BAAI/bge-base-en-v1.5` (open) | 16/25 (64.0%) | 0.450 |
+
+The open model trails the production baseline on this dataset, and the gap is not spread evenly
+across question types. Of the 9 open-model misses, nearly all reference a specific numbered
+Australian Privacy Principle (APP 1, APP 3, APP 5, APP 10, APP 11.1, APP 11.2, APP 12) or section
+(s 15, the NDB eligible-breach case), while free-text questions with no provision number are
+answered correctly at roughly the same rate as Titan. This points to BAAI/bge-base-en-v1.5's
+general-purpose pretraining carrying a weaker signal for numbered legal citations specifically,
+rather than a broad quality gap - a plausible target for a small contrastive fine-tune on this
+project's own labeled cases, rather than a reason to dismiss open embeddings generally.
+
+`PRV_EMBEDDING_PROVIDER` and `PRV_OPEN_EMBEDDING_MODEL_ID` (see `rag_backend.py`) control which
+embedding model `prv_index()` builds. The index cache directory is namespaced per provider
+(`faiss_index` for Bedrock, `faiss_index_<provider>` otherwise), so switching providers can never
+load an index that was built with a different, dimensionally incompatible embedding model.
+
 ## Delivery workflow
 
 GitHub is the source of truth. Pull requests and pushes run the offline test suite. A successful
