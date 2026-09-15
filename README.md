@@ -60,6 +60,7 @@ runs it through the same 25-case benchmark, so the production Titan embeddings c
 against an open alternative without touching the production index or cache:
 
 ```bash
+pip install -r requirements-ml.txt                             # torch/sentence-transformers - not in requirements.txt
 python compare_embeddings.py                                  # builds/evaluates BAAI/bge-base-en-v1.5
 PRV_EMBEDDING_PROVIDER=bedrock python compare_embeddings.py    # re-run the Titan path (needs AWS creds)
 ```
@@ -162,6 +163,18 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python app.py
+```
+
+`requirements.txt` is the production dependency set - it is what both live deployments install
+(this repo backs both the Gradio app on this HF Space and a separate Streamlit Community Cloud
+deployment of `rag_frontend.py`, sharing this same `main` branch). The open-embedding tooling
+(`compare_embeddings.py`, `check_eval_regression.py`) needs its own extra dependencies -
+`sentence-transformers` pulls in `torch`, which is large and irrelevant to either production
+app - so those live in `requirements-ml.txt` instead and are never installed by either
+deployment:
+
+```bash
+pip install -r requirements-ml.txt   # only needed for the open-embedding tooling below
 ```
 
 Required environment variables:

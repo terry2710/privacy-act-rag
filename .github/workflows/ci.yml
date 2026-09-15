@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements.txt -r requirements-dev.txt
+        run: pip install -r requirements.txt -r requirements-dev.txt -r requirements-ml.txt
       - name: Compile Python modules
         run: python -m py_compile app.py rag_backend.py rag_evaluation.py rag_logging.py rag_retrieval.py
       - name: Run offline tests
