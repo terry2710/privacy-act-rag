@@ -1,0 +1,361 @@
+{
+  "note": "Candidate questions for 1.3 fine-tuning training data. Each is checked against the real PDF chunks (same PyPDFLoader + RecursiveCharacterTextSplitter(1500/200) as rag_backend.py) by prepare_finetune_data.py before being trusted. anchors are short lowercase phrases; a chunk counts as a match if it contains at least one anchor after the same normalization rag_evaluation.py uses (lowercase, whitespace-collapsed). None of these questions duplicate the held-out 25-case data/retrieval_eval.json benchmark - that file must stay untouched by training. (2026-09-16: 4 anchors revised - app-2/app-7/app-10/app-13 had matched the wrong provision on the first pass; new anchors are unverified proposals, confirmed only if prepare_finetune_data.py actually finds them in a real chunk.)",
+  "candidates": [
+    {
+      "id": "app-1-systems",
+      "category": "app",
+      "source_section": "APP 1.2",
+      "question": "What must an APP entity's information-handling practices, procedures and systems achieve under APP 1?",
+      "anchors": [
+        "will ensure that the entity complies with the australian privacy principles",
+        "reasonable in the circumstances to implement practices, procedures and systems"
+      ]
+    },
+    {
+      "id": "app-2-exceptions",
+      "category": "app",
+      "source_section": "APP 2",
+      "question": "When is an APP entity not required to allow an individual to deal with it anonymously or under a pseudonym?",
+      "anchors": [
+        "impracticable for the app entity to deal with individuals who have not identified themselves",
+        "option of not identifying themselves, or of using a pseudonym"
+      ]
+    },
+    {
+      "id": "app-3-lawful-fair-means",
+      "category": "app",
+      "source_section": "APP 3.5",
+      "question": "By what means must an APP entity collect personal information?",
+      "anchors": [
+        "lawful and fair means",
+        "must collect personal information only by lawful and fair means"
+      ]
+    },
+    {
+      "id": "app-3-collect-from-individual",
+      "category": "app",
+      "source_section": "APP 3.6",
+      "question": "From whom must an APP entity collect personal information about an individual, where reasonably practicable?",
+      "anchors": [
+        "collect personal information about an individual only from the individual",
+        "unreasonable or impracticable to do so"
+      ]
+    },
+    {
+      "id": "app-4-destroy-unsolicited",
+      "category": "app",
+      "source_section": "APP 4.3",
+      "question": "What must an APP entity do with unsolicited personal information it could not have collected under APP 3?",
+      "anchors": [
+        "destroy the information or ensure that the information is de-identified",
+        "as soon as practicable"
+      ]
+    },
+    {
+      "id": "app-5-notification-matters",
+      "category": "app",
+      "source_section": "APP 5.2",
+      "question": "What matters must an APP entity's notification under APP 5 ordinarily cover?",
+      "anchors": [
+        "identity and contact details of the app entity",
+        "fact and circumstances of collection",
+        "purposes of collection"
+      ]
+    },
+    {
+      "id": "app-6-secondary-purpose-exception",
+      "category": "app",
+      "source_section": "APP 6.2",
+      "question": "When may an APP entity use personal information for a secondary purpose without the individual's consent?",
+      "anchors": [
+        "individual would reasonably expect",
+        "directly related to the primary purpose",
+        "reasonably necessary for one or more enforcement related activities"
+      ]
+    },
+    {
+      "id": "app-7-existing-relationship-exception",
+      "category": "app",
+      "source_section": "APP 7.2",
+      "question": "When may an organisation use personal information for direct marketing without the individual's consent?",
+      "anchors": [
+        "simple means by which the individual may easily request not to receive direct marketing",
+        "individual would reasonably expect"
+      ]
+    },
+    {
+      "id": "app-8-overseas-exception",
+      "category": "app",
+      "source_section": "APP 8.2",
+      "question": "What exceptions allow an APP entity to disclose personal information overseas without ensuring the recipient complies with the APPs?",
+      "anchors": [
+        "reasonably believes",
+        "individual consents to the disclosure",
+        "expressly informed"
+      ]
+    },
+    {
+      "id": "app-9-identifier-exception",
+      "category": "app",
+      "source_section": "APP 9.2",
+      "question": "When may an organisation use or disclose a government related identifier of an individual?",
+      "anchors": [
+        "government related identifier of an individual",
+        "reasonably necessary"
+      ]
+    },
+    {
+      "id": "app-10-use-disclose-quality",
+      "category": "app",
+      "source_section": "APP 10.2",
+      "question": "What quality steps must an APP entity take before using or disclosing personal information?",
+      "anchors": [
+        "personal information that the entity uses or discloses is, having regard to the purpose of the use or disclosure",
+        "accurate, up to date, complete and relevant"
+      ]
+    },
+    {
+      "id": "app-12-timeframe",
+      "category": "app",
+      "source_section": "APP 12.4",
+      "question": "Within what timeframe must an APP entity respond to a request for access to personal information?",
+      "anchors": [
+        "reasonable period after the request is made",
+        "respond to the request for access"
+      ]
+    },
+    {
+      "id": "app-12-charge",
+      "category": "app",
+      "source_section": "APP 12.7",
+      "question": "May an APP entity charge an individual for giving access to their personal information?",
+      "anchors": [
+        "must not charge",
+        "give access to the personal information"
+      ]
+    },
+    {
+      "id": "app-13-notify-third-parties",
+      "category": "app",
+      "source_section": "APP 13.2",
+      "question": "What must an APP entity do if it corrects personal information it had previously disclosed to another entity?",
+      "anchors": [
+        "notify the other app entity",
+        "previously disclosed"
+      ]
+    },
+    {
+      "id": "def-personal-information",
+      "category": "interpretation",
+      "source_section": "6",
+      "question": "How does the Privacy Act define personal information?",
+      "anchors": [
+        "information or an opinion about an identified individual, or an individual who is reasonably identifiable"
+      ]
+    },
+    {
+      "id": "def-consent",
+      "category": "interpretation",
+      "source_section": "6",
+      "question": "How is consent defined for the purposes of the Privacy Act?",
+      "anchors": [
+        "express consent or implied consent"
+      ]
+    },
+    {
+      "id": "def-de-identified",
+      "category": "interpretation",
+      "source_section": "6",
+      "question": "When is personal information de-identified under the Privacy Act?",
+      "anchors": [
+        "no longer about an identifiable individual or an individual who is reasonably identifiable"
+      ]
+    },
+    {
+      "id": "def-generally-available-publication",
+      "category": "interpretation",
+      "source_section": "6",
+      "question": "What counts as a generally available publication under the Privacy Act?",
+      "anchors": [
+        "magazine, book, article, newspaper",
+        "generally available to members of the public"
+      ]
+    },
+    {
+      "id": "def-collects",
+      "category": "interpretation",
+      "source_section": "6",
+      "question": "When does an entity collect personal information under the Privacy Act?",
+      "anchors": [
+        "collects the personal information for inclusion in a record or generally available publication"
+      ]
+    },
+    {
+      "id": "ndb-guide",
+      "category": "data-breach",
+      "source_section": "26WA",
+      "question": "What does Part IIIC of the Privacy Act cover?",
+      "anchors": [
+        "26wa",
+        "notifiable data breach"
+      ]
+    },
+    {
+      "id": "ndb-entity-definition",
+      "category": "data-breach",
+      "source_section": "26WB",
+      "question": "How is 'entity' defined for the purposes of the Notifiable Data Breaches scheme?",
+      "anchors": [
+        "26wb entity"
+      ]
+    },
+    {
+      "id": "ndb-deemed-holding",
+      "category": "data-breach",
+      "source_section": "26WC",
+      "question": "When is an entity taken to hold personal information for the purposes of Part IIIC?",
+      "anchors": [
+        "26wc",
+        "deemed"
+      ]
+    },
+    {
+      "id": "ndb-exception-other-entities",
+      "category": "data-breach",
+      "source_section": "26WJ",
+      "question": "What exception applies to an entity's assessment obligation when another entity has already dealt with an eligible data breach?",
+      "anchors": [
+        "eligible data breaches of other entities",
+        "26wj"
+      ]
+    },
+    {
+      "id": "ndb-exception-enforcement",
+      "category": "data-breach",
+      "source_section": "26WN",
+      "question": "What exception to notifying an eligible data breach applies for enforcement related activities?",
+      "anchors": [
+        "enforcement related activities",
+        "26wn"
+      ]
+    },
+    {
+      "id": "ndb-commissioner-direction",
+      "category": "data-breach",
+      "source_section": "26WR",
+      "question": "When may the Commissioner direct an entity to notify an eligible data breach?",
+      "anchors": [
+        "commissioner may direct",
+        "26wr"
+      ]
+    },
+    {
+      "id": "enforcement-13h",
+      "category": "enforcement",
+      "source_section": "13H",
+      "question": "What is the civil penalty provision for interference with the privacy of individuals?",
+      "anchors": [
+        "civil penalty provision for interference with privacy of individuals",
+        "13h"
+      ]
+    },
+    {
+      "id": "enforcement-13j",
+      "category": "enforcement",
+      "source_section": "13J",
+      "question": "What alternative orders can a court make under section 13J of the Privacy Act?",
+      "anchors": [
+        "13j",
+        "alternative orders"
+      ]
+    },
+    {
+      "id": "enforcement-commissioner-functions",
+      "category": "enforcement",
+      "source_section": "27",
+      "question": "What are the functions of the Information Commissioner under the Privacy Act?",
+      "anchors": [
+        "functions of the commissioner"
+      ]
+    },
+    {
+      "id": "enforcement-complaints",
+      "category": "enforcement",
+      "source_section": "36",
+      "question": "How may a complaint be made to the Commissioner under the Privacy Act?",
+      "anchors": [
+        "complaints",
+        "may make a complaint"
+      ]
+    },
+    {
+      "id": "enforcement-determination",
+      "category": "enforcement",
+      "source_section": "52",
+      "question": "What can the Commissioner determine after investigating a complaint under the Privacy Act?",
+      "anchors": [
+        "determination of the commissioner"
+      ]
+    },
+    {
+      "id": "enforcement-undertaking",
+      "category": "enforcement",
+      "source_section": "80V",
+      "question": "What is an enforceable undertaking under the Privacy Act?",
+      "anchors": [
+        "enforceable undertaking",
+        "80v"
+      ]
+    },
+    {
+      "id": "enforcement-injunction",
+      "category": "enforcement",
+      "source_section": "80W",
+      "question": "When may an injunction be sought under the Privacy Act?",
+      "anchors": [
+        "injunction",
+        "80w"
+      ]
+    },
+    {
+      "id": "enforcement-infringement-notice",
+      "category": "enforcement",
+      "source_section": "80UB",
+      "question": "What is an infringement notice under the Privacy Act?",
+      "anchors": [
+        "infringement notice",
+        "80ub"
+      ]
+    },
+    {
+      "id": "credit-crb-collection",
+      "category": "credit-reporting",
+      "source_section": "20C",
+      "question": "What restrictions apply when a credit reporting body collects credit information?",
+      "anchors": [
+        "credit reporting body",
+        "20c collection of solicited credit information"
+      ]
+    },
+    {
+      "id": "credit-cp-hardship",
+      "category": "credit-reporting",
+      "source_section": "21EA",
+      "question": "What must a credit provider disclose about an individual's financial hardship information?",
+      "anchors": [
+        "financial hardship information",
+        "21ea"
+      ]
+    },
+    {
+      "id": "credit-access-correction",
+      "category": "credit-reporting",
+      "source_section": "21T",
+      "question": "How may an individual access credit eligibility information held about them by a credit provider?",
+      "anchors": [
+        "21t  access to credit eligibility information",
+        "credit eligibility information"
+      ]
+    }
+  ]
+}
