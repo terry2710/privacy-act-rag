@@ -1,5 +1,6 @@
 # 1. Import OS, Document Loader, Text Splitter, Bedrock Embeddings, Vector DB, Bedrock-LLM
 import os
+import re
 import shutil
 import sys
 import time
@@ -19,16 +20,47 @@ import rag_logging
 
 
 # Embedding provider switch used to compare the production Titan embeddings against an open
-# sentence-transformers model (roadmap step 1.1 - open-vs-proprietary embedding comparison).
-# "bedrock" is the unchanged default; set PRV_EMBEDDING_PROVIDER=bge to build/evaluate the open
-# model instead. Nothing about the "bedrock" path below changes when this var is left unset.
+# sentence-transformers model (roadmap step 1.1 - open-vs-proprietary embedding comparison),
+# and later to swap in a version of that open model fine-tuned on this project's own labeled
+# questions (roadmap step 1.3). "bedrock" is the unchanged default; nothing about the "bedrock"
+# path below changes when this var is left unset.
+#   PRV_EMBEDDING_PROVIDER=bge     - BAAI/bge-base-en-v1.5, unmodified (step 1.1 baseline;
+#                                    Hit@4 64.0%/MRR 0.450 on data/retrieval_eval.json)
+#   PRV_EMBEDDING_PROVIDER=bge-ft  - the same base model, fine-tuned on
+#                                    data/finetune_confirmed.json (step 1.3; see
+#                                    finetune_bge_kaggle.py). Hit@4 84.0%/MRR 0.780 on the same
+#                                    benchmark - closes most of the numbered-APP/section gap
+#                                    that motivated the fine-tune, and MRR now exceeds Titan's.
+# PRV_OPEN_EMBEDDING_MODEL_ID overrides the model id for either "bge" or "bge-ft" - useful for
+# pointing at a specific checkpoint (e.g. a later fine-tune round) without editing code.
 EMBEDDING_PROVIDER = os.environ.get("PRV_EMBEDDING_PROVIDER", "bedrock")
-OPEN_EMBEDDING_MODEL_ID = os.environ.get("PRV_OPEN_EMBEDDING_MODEL_ID", "BAAI/bge-base-en-v1.5")
+_OPEN_EMBEDDING_DEFAULTS = {
+    "bge": "BAAI/bge-base-en-v1.5",
+    "bge-ft": "greecehalf/bge-base-privacy-act-ft",
+}
+OPEN_EMBEDDING_MODEL_ID = os.environ.get(
+    "PRV_OPEN_EMBEDDING_MODEL_ID",
+    _OPEN_EMBEDDING_DEFAULTS.get(EMBEDDING_PROVIDER, "BAAI/bge-base-en-v1.5"),
+)
 
-# Namespaced by provider so switching providers can never load a FAISS index that was built
-# with a different (and dimensionally incompatible) embedding model. The default "bedrock"
-# path keeps the exact directory/prefix names already used in production.
-_INDEX_SUFFIX = "" if EMBEDDING_PROVIDER == "bedrock" else f"_{EMBEDDING_PROVIDER}"
+
+def _sanitize_for_path(value):
+    """Turn a HF model id like 'greecehalf/bge-base-privacy-act-ft' into a filesystem-safe token."""
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", value)
+
+
+# Namespaced by provider AND (for non-bedrock providers) the specific model id, so switching
+# PRV_OPEN_EMBEDDING_MODEL_ID while keeping the same provider - e.g. moving from the plain
+# "bge" baseline to a "bge-ft" checkpoint, or between two fine-tune rounds - can never silently
+# load a FAISS index that was built with a different embedding model. Before this was keyed by
+# model id too, every non-bedrock provider value shared one cache directory per provider name:
+# evaluating a new model without first deleting the old cache would silently re-serve the
+# previous model's vectors instead of rebuilding, with no error to flag the mismatch. The
+# default "bedrock" path keeps the exact directory/prefix names already used in production.
+_INDEX_SUFFIX = (
+    "" if EMBEDDING_PROVIDER == "bedrock"
+    else f"_{EMBEDDING_PROVIDER}_{_sanitize_for_path(OPEN_EMBEDDING_MODEL_ID)}"
+)
 INDEX_DIR = f"faiss_index{_INDEX_SUFFIX}"
 INDEX_FILES = ["index.faiss", "index.pkl"]  # the two files FAISS.save_local() writes
 
@@ -129,13 +161,18 @@ def _make_embeddings():
         roadmap step 1.1. Runs on CPU, no AWS calls. normalize_embeddings=True keeps the
         cosine-from-L2 conversion in rag_logging.cosine_from_l2_sq valid (see its docstring) -
         BGE, like Titan v2, must be unit-normalised for that shortcut to hold.
+    "bge-ft": the same code path as "bge", pointed at greecehalf/bge-base-privacy-act-ft by
+        default - BAAI/bge-base-en-v1.5 fine-tuned on this project's own labeled questions
+        (roadmap step 1.3, see finetune_bge_kaggle.py). Trained with no query instruction
+        prefix specifically so it matches how this function calls it below - see that script's
+        "why no query instruction prefix" note.
     """
     if EMBEDDING_PROVIDER == "bedrock":
         return BedrockEmbeddings(
             region_name=AWS_REGION,
             model_id=EMBEDDING_MODEL_ID,
             config=BEDROCK_CONFIG)
-    if EMBEDDING_PROVIDER == "bge":
+    if EMBEDDING_PROVIDER in ("bge", "bge-ft"):
         from langchain_huggingface import HuggingFaceEmbeddings  # heavy (torch); imported lazily
         return HuggingFaceEmbeddings(
             model_name=OPEN_EMBEDDING_MODEL_ID,

@@ -79,10 +79,39 @@ general-purpose pretraining carrying a weaker signal for numbered legal citation
 rather than a broad quality gap - a plausible target for a small contrastive fine-tune on this
 project's own labeled cases, rather than a reason to dismiss open embeddings generally.
 
+### Fine-tuning the open embedding model
+
+Roadmap step 1.3 acts on that finding: `prepare_finetune_data.py` confirms candidate
+(question, passage) pairs against the real production PDF chunks (never hand-typed excerpts,
+so training data can't drift from what the retriever actually indexes), a human reviews and
+approves them into `data/finetune_confirmed.json`, and `finetune_bge_kaggle.py` fine-tunes
+`BAAI/bge-base-en-v1.5` on those pairs with `MultipleNegativesRankingLoss` (meant to run on
+Kaggle's free GPU - see that script's docstring for the notebook commands). Training never
+touches `data/retrieval_eval.json`, so the comparison below stays uncontaminated:
+
+| Embedding | Hit@4 | MRR |
+|---|---:|---:|
+| `amazon.titan-embed-text-v2:0` (production) | 22/25 (88.0%) | 0.670 |
+| `BAAI/bge-base-en-v1.5` (open, base) | 16/25 (64.0%) | 0.450 |
+| [`greecehalf/bge-base-privacy-act-ft`](https://huggingface.co/greecehalf/bge-base-privacy-act-ft) (open, fine-tuned) | 21/25 (84.0%) | 0.780 |
+
+The fine-tune closes most of the numbered-citation gap the base model had (APP 1, APP 3, APP 5,
+APP 11.1, and APP 12 all move from Miss to Pass) and MRR ends up higher than Titan's, meaning a
+hit tends to rank closer to first place. The 4 remaining misses are not a method failure: 3
+reference provisions (APP 11.2, s 15, the NDB eligible-breach definition in s 26WE) that simply
+aren't among the 36 training pairs yet, and the 4th (APP 10) has a training example on the same
+section but a differently-worded eval question - a expected limit of fine-tuning on this few
+examples per topic, not a ceiling on the approach.
+
+Use it with `PRV_EMBEDDING_PROVIDER=bge-ft python compare_embeddings.py` (or set that same
+variable when calling `rag_backend.prv_index()` directly).
+
 `PRV_EMBEDDING_PROVIDER` and `PRV_OPEN_EMBEDDING_MODEL_ID` (see `rag_backend.py`) control which
-embedding model `prv_index()` builds. The index cache directory is namespaced per provider
-(`faiss_index` for Bedrock, `faiss_index_<provider>` otherwise), so switching providers can never
-load an index that was built with a different, dimensionally incompatible embedding model.
+embedding model `prv_index()` builds. The index cache directory is namespaced per provider *and*
+model id (`faiss_index` for Bedrock, `faiss_index_<provider>_<model-id>` otherwise), so switching
+providers - or switching model id while keeping the same provider, e.g. moving from the base
+`bge` model to a `bge-ft` checkpoint - can never load an index that was built with a different
+embedding model.
 
 ## Production feedback loop
 

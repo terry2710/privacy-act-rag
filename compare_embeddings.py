@@ -3,6 +3,10 @@
 Usage:
     python compare_embeddings.py                                  # builds/evaluates the open (bge) index
     PRV_EMBEDDING_PROVIDER=bedrock python compare_embeddings.py    # re-run the Titan path (needs AWS creds)
+    PRV_EMBEDDING_PROVIDER=bge-ft python compare_embeddings.py     # roadmap 1.3: the bge-base-en-v1.5
+                                                                    # checkpoint fine-tuned on
+                                                                    # data/finetune_confirmed.json instead
+                                                                    # of the plain base model above
 
 Prints Hit@4 / MRR for whichever provider is active. When the open model is what's being
 evaluated, the already-recorded Titan baseline is printed alongside it so the two numbers land
