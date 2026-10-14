@@ -80,7 +80,7 @@ def test_broken_credentials_degrade_silently(cw_log_group):
     Runs in a subprocess so the bogus credentials cannot leak into the rest of the session.
     """
     script = (
-        "import sys, rag_logging\n"
+        "import sys\nfrom core import rag_logging\n"
         "for i in range(3): rag_logging.emit({'event': 'qa', 'request_id': str(i)})\n"
         "rag_logging._sink.shutdown()\n"
         "print('BROKEN', rag_logging._sink._broken)\n"

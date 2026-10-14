@@ -1,7 +1,7 @@
 # Only for the open-embedding tooling (compare_embeddings.py, check_eval_regression.py) and
 # the CI regression gate. No deployment installs it: the HF Space installs requirements.txt,
 # the Streamlit demo installs demos/streamlit/requirements.txt, and the container image
-# installs requirements-core.txt plus requirements-api.txt.
+# installs requirements/core.txt plus requirements/api.txt.
 #
 # sentence-transformers pulls in torch as a transitive dependency, which is large and slow to
 # install, so it stays out of every deployment's dependency set.

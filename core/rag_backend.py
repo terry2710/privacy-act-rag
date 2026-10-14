@@ -16,7 +16,7 @@ from langchain_aws import ChatBedrock
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-import rag_logging
+from core import rag_logging
 
 
 # Embedding provider switch used to compare the production Titan embeddings against an open

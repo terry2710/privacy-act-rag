@@ -1,7 +1,7 @@
 """End-to-end against the real FAISS index and Bedrock, logging to a local JSONL only."""
 import pytest
 
-import rag_backend
+from core import rag_backend
 
 pytestmark = [pytest.mark.aws, pytest.mark.index]
 
@@ -92,5 +92,5 @@ def test_off_topic_question_scores_far_lower(index):
     """Sanity check that the cosine score actually discriminates."""
     on_topic = index.similarity_search_with_score("What is a notifiable data breach?", k=1)[0][1]
     off_topic = index.similarity_search_with_score("What is the recipe for chocolate cake?", k=1)[0][1]
-    import rag_logging
+    from core import rag_logging
     assert rag_logging.cosine_from_l2_sq(on_topic) > rag_logging.cosine_from_l2_sq(off_topic) + 0.2

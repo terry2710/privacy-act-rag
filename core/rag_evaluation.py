@@ -3,10 +3,10 @@
 import json
 from pathlib import Path
 
-from rag_retrieval import HybridReranker
+from core.rag_retrieval import HybridReranker
 
 
-DATASET_PATH = Path(__file__).parent / "data" / "retrieval_eval.json"
+DATASET_PATH = Path(__file__).resolve().parents[1] / "data" / "retrieval_eval.json"
 
 
 def load_dataset(path=DATASET_PATH):

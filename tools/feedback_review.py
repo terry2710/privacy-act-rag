@@ -9,9 +9,9 @@ and annotates the cases worth turning into regression tests; promote_feedback.py
 those into the eval dataset.
 
 Usage:
-    python feedback_review.py                      # last 7 days -> data/feedback_queue.json
-    python feedback_review.py --days 30
-    python feedback_review.py --log-group /privacy-act-rag/qa --out data/feedback_queue.json
+    python -m tools.feedback_review                      # last 7 days -> data/feedback_queue.json
+    python -m tools.feedback_review --days 30
+    python -m tools.feedback_review --log-group /privacy-act-rag/qa --out data/feedback_queue.json
 
 Re-running this script merges rather than replaces: it preserves review_status/notes/
 expected_terms a human already filled in, and only appends items for request_ids not already
@@ -27,7 +27,7 @@ from pathlib import Path
 import boto3
 
 DEFAULT_LOG_GROUP = os.environ.get("PRV_LOG_GROUP") or "/privacy-act-rag/qa"
-DEFAULT_OUT = Path(__file__).parent / "data" / "feedback_queue.json"
+DEFAULT_OUT = Path(__file__).resolve().parents[1] / "data" / "feedback_queue.json"
 AWS_REGION = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
 
 

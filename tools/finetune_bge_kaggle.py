@@ -27,12 +27,12 @@ Why no query instruction prefix:
 Usage (inside a Kaggle notebook cell):
     !git clone --depth 1 https://github.com/terry2710/privacy-act-rag.git repo
     !pip install -q sentence-transformers
-    !python repo/finetune_bge_kaggle.py --data repo/data/finetune_confirmed.json --out /kaggle/working/bge-privacy-act-ft
+    !python repo/tools/finetune_bge_kaggle.py --data repo/data/finetune_confirmed.json --out /kaggle/working/bge-privacy-act-ft
 
     # Optional: push straight to the Hugging Face Hub from Kaggle (avoids downloading the model
     # and re-uploading from a laptop). Add HF_TOKEN as a Kaggle secret first (a token with write
     # access to the greecehalf namespace), then:
-    !python repo/finetune_bge_kaggle.py --data repo/data/finetune_confirmed.json \\
+    !python repo/tools/finetune_bge_kaggle.py --data repo/data/finetune_confirmed.json \\
         --out /kaggle/working/bge-privacy-act-ft --push-to-hub greecehalf/bge-base-privacy-act-ft
 
 After training, evaluation happens back on the local Mac (it already has langchain + the

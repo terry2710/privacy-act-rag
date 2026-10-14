@@ -2,11 +2,11 @@
 
 Deliberately does not build a real index or import rag_backend/rag_evaluation at module scope -
 that needs sentence-transformers/torch and a real (or cached) BGE download, which is exercised
-as its own CI step (`python check_eval_regression.py`), not through pytest.
+as its own CI step (`python -m tools.check_eval_regression`), not through pytest.
 """
 import json
 
-from check_eval_regression import check_regression, load_baseline, save_baseline
+from tools.check_eval_regression import check_regression, load_baseline, save_baseline
 
 BASELINE = {"provider": "bge", "model_id": "BAAI/bge-base-en-v1.5", "dataset_version": "1.0",
             "cases": 25, "hit_rate": 0.64, "mrr": 0.45}

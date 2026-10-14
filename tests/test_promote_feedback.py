@@ -3,7 +3,7 @@ import copy
 
 import pytest
 
-from promote_feedback import bump_version, promote, validate_dataset
+from tools.promote_feedback import bump_version, promote, validate_dataset
 
 BASE_DATASET = {
     "dataset_version": "1.0",

@@ -5,7 +5,7 @@ colorFrom: yellow
 colorTo: purple
 sdk: gradio
 sdk_version: 6.5.1
-app_file: app.py
+app_file: demos/gradio/app.py
 pinned: false
 hf_oauth: true
 hf_oauth_scopes:
@@ -55,14 +55,14 @@ until the benchmark demonstrates that the reranker improves quality without regr
 
 ### Open-vs-proprietary embedding comparison
 
-`compare_embeddings.py` builds a second FAISS index with an open sentence-transformers model and
+`tools/compare_embeddings.py` builds a second FAISS index with an open sentence-transformers model and
 runs it through the same 25-case benchmark, so the production Titan embeddings can be compared
 against an open alternative without touching the production index or cache:
 
 ```bash
-pip install -r requirements-ml.txt                             # torch/sentence-transformers - not in requirements.txt
-python compare_embeddings.py                                  # builds/evaluates BAAI/bge-base-en-v1.5
-PRV_EMBEDDING_PROVIDER=bedrock python compare_embeddings.py    # re-run the Titan path (needs AWS creds)
+pip install -r requirements/ml.txt                             # torch/sentence-transformers - not in requirements.txt
+python -m tools.compare_embeddings                                  # builds/evaluates BAAI/bge-base-en-v1.5
+PRV_EMBEDDING_PROVIDER=bedrock python -m tools.compare_embeddings    # re-run the Titan path (needs AWS creds)
 ```
 
 | Embedding | Hit@4 | MRR |
@@ -81,10 +81,10 @@ project's own labeled cases, rather than a reason to dismiss open embeddings gen
 
 ### Fine-tuning the open embedding model
 
-Roadmap step 1.3 acts on that finding: `prepare_finetune_data.py` confirms candidate
+Roadmap step 1.3 acts on that finding: `tools/prepare_finetune_data.py` confirms candidate
 (question, passage) pairs against the real production PDF chunks (never hand-typed excerpts,
 so training data can't drift from what the retriever actually indexes), a human reviews and
-approves them into `data/finetune_confirmed.json`, and `finetune_bge_kaggle.py` fine-tunes
+approves them into `data/finetune_confirmed.json`, and `tools/finetune_bge_kaggle.py` fine-tunes
 `BAAI/bge-base-en-v1.5` on those pairs with `MultipleNegativesRankingLoss` (meant to run on
 Kaggle's free GPU - see that script's docstring for the notebook commands). Training never
 touches `data/retrieval_eval.json`, so the comparison below stays uncontaminated:
@@ -103,10 +103,10 @@ aren't among the 36 training pairs yet, and the 4th (APP 10) has a training exam
 section but a differently-worded eval question - a expected limit of fine-tuning on this few
 examples per topic, not a ceiling on the approach.
 
-Use it with `PRV_EMBEDDING_PROVIDER=bge-ft python compare_embeddings.py` (or set that same
+Use it with `PRV_EMBEDDING_PROVIDER=bge-ft python -m tools.compare_embeddings` (or set that same
 variable when calling `rag_backend.prv_index()` directly).
 
-`PRV_EMBEDDING_PROVIDER` and `PRV_OPEN_EMBEDDING_MODEL_ID` (see `rag_backend.py`) control which
+`PRV_EMBEDDING_PROVIDER` and `PRV_OPEN_EMBEDDING_MODEL_ID` (see `core/rag_backend.py`) control which
 embedding model `prv_index()` builds. The index cache directory is namespaced per provider *and*
 model id (`faiss_index` for Bedrock, `faiss_index_<provider>_<model-id>` otherwise), so switching
 providers - or switching model id while keeping the same provider, e.g. moving from the base
@@ -115,19 +115,19 @@ embedding model.
 
 ## Production feedback loop
 
-Every answer has "Helpful" / "Not helpful" buttons (`app.py` -> `rag_backend.rag_logging.emit_feedback`).
+Every answer has "Helpful" / "Not helpful" buttons (`demos/gradio/app.py` -> `rag_backend.rag_logging.emit_feedback`).
 "Not helpful" clicks are the project's real-world signal that retrieval or generation went
 wrong, so they are turned into permanent regression tests rather than left to sit unread in
 CloudWatch:
 
-1. **`feedback_review.py`** queries CloudWatch Logs Insights for recent `not_helpful` feedback
+1. **`tools/feedback_review.py`** queries CloudWatch Logs Insights for recent `not_helpful` feedback
    events and joins each one to its original Q&A turn by `request_id`, writing a human-readable
    queue to `data/feedback_queue.json` (gitignored - it is pulled fresh from production logs
    each run, not committed).
 
    ```bash
-   python feedback_review.py              # last 7 days
-   python feedback_review.py --days 30
+   python -m tools.feedback_review              # last 7 days
+   python -m tools.feedback_review --days 30
    ```
 
 2. A human reviews each pending item in that file: reads the question, the answer, and which
@@ -144,16 +144,16 @@ CloudWatch:
    Feedback that turns out not to be a real retrieval defect (an ambiguous question, a one-off)
    is instead set to `"review_status": "dismissed"`.
 
-3. **`promote_feedback.py`** appends every `"promoted"` item into
+3. **`tools/promote_feedback.py`** appends every `"promoted"` item into
    [`data/retrieval_eval.json`](data/retrieval_eval.json) as a new case (tagged
    `"origin": "production_feedback"`), bumps `dataset_version`, and marks the queue item
    `"promoted_committed"` so re-running it is idempotent.
 
    ```bash
-   python promote_feedback.py
+   python -m tools.promote_feedback
    ```
 
-4. **`check_eval_regression.py`** is the CI gate this loop feeds: it builds the free, CPU-only
+4. **`tools/check_eval_regression.py`** is the CI gate this loop feeds: it builds the free, CPU-only
    BGE index (no AWS calls - `PRV_EMBEDDING_PROVIDER`/`PRV_S3_BUCKET` are forced regardless of
    ambient environment), runs the same `evaluate_retrieval()` the Benchmark tab uses against the
    full dataset, and fails the build if aggregate Hit@4/MRR regress beyond a small tolerance
@@ -163,16 +163,16 @@ CloudWatch:
    regress again once it has a case.
 
    ```bash
-   python check_eval_regression.py                    # compare against the stored baseline
-   python check_eval_regression.py --update-baseline   # after a deliberate, reviewed change
+   python -m tools.check_eval_regression                    # compare against the stored baseline
+   python -m tools.check_eval_regression --update-baseline   # after a deliberate, reviewed change
    ```
 
    `data/eval_baseline.json` is currently seeded from the measured open-embedding comparison
    above (Hit@4 64.0%, MRR 0.450, 25 cases) - the same free BGE path this gate runs in CI.
 
 Cost: Logs Insights bills per GB of log data scanned (roughly USD 0.005/GB as of Sep 2026); at
-this project's traffic volume `feedback_review.py`'s two queries scan well under 1 MB per run,
-so realistic cost per run is a small fraction of a cent. `check_eval_regression.py` makes no AWS
+this project's traffic volume `tools/feedback_review.py`'s two queries scan well under 1 MB per run,
+so realistic cost per run is a small fraction of a cent. `tools/check_eval_regression.py` makes no AWS
 calls at all.
 
 ## Delivery workflow
@@ -191,22 +191,22 @@ the test gate and Space deployment. AWS-backed tests remain opt-in and never run
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python app.py
+python demos/gradio/app.py
 ```
 
-Dependencies are split by consumer: `requirements-core.txt` is the shared retrieval core,
+Dependencies are split by consumer: `requirements/core.txt` is the shared retrieval core,
 `requirements.txt` is the Gradio app on this HF Space, `demos/streamlit/requirements.txt` is the
 detached Streamlit demo (`demos/streamlit/app.py`, deployed separately on Streamlit Community
-Cloud), and `requirements-api.txt` adds the HTTP API. The Space and Streamlit files repeat the
+Cloud), and `requirements/api.txt` adds the HTTP API. The Space and Streamlit files repeat the
 core list instead of including it, and `tests/test_requirements_sync.py` fails if they drift.
 The open-embedding tooling
-(`compare_embeddings.py`, `check_eval_regression.py`) needs its own extra dependencies -
+(`tools/compare_embeddings.py`, `tools/check_eval_regression.py`) needs its own extra dependencies -
 `sentence-transformers` pulls in `torch`, which is large and irrelevant to either production
-app - so those live in `requirements-ml.txt` instead and are never installed by either
+app - so those live in `requirements/ml.txt` instead and are never installed by either
 deployment:
 
 ```bash
-pip install -r requirements-ml.txt   # only needed for the open-embedding tooling below
+pip install -r requirements/ml.txt   # only needed for the open-embedding tooling below
 ```
 
 Required environment variables:
@@ -223,7 +223,7 @@ Keep credentials in environment variables or Hugging Face Space secrets. Never c
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 pytest
 ```
 

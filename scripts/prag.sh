@@ -24,7 +24,7 @@ quality
 
 run
   api           uvicorn api.main:app with reload (PORT, default 8000)
-  gradio        python app.py
+  gradio        python demos/gradio/app.py
   streamlit     streamlit run demos/streamlit/app.py (needs demos/streamlit/requirements.txt)
 
 call a running API (BASE_URL, default http://localhost:$PORT)
@@ -60,7 +60,7 @@ USAGE
 }
 
 compile_all() {
-  python -m py_compile app.py rag_backend.py rag_evaluation.py rag_logging.py rag_retrieval.py api/*.py worker/*.py demos/streamlit/app.py
+  python -m py_compile core/*.py api/*.py worker/*.py tools/*.py demos/gradio/app.py demos/streamlit/app.py
 }
 
 cmd="${1:-help}"
@@ -74,18 +74,18 @@ case "$cmd" in
     python -m pytest tests/test_api.py "$@"
     ;;
   gate)
-    python check_eval_regression.py "$@"
+    python -m tools.check_eval_regression "$@"
     ;;
   check)
     compile_all
     python -m pytest -m "$OFFLINE_MARKERS"
-    python check_eval_regression.py
+    python -m tools.check_eval_regression
     ;;
   api)
     exec python -m uvicorn api.main:app --reload --port "$PORT" "$@"
     ;;
   gradio)
-    exec python app.py "$@"
+    exec python demos/gradio/app.py "$@"
     ;;
   streamlit)
     exec python -m streamlit run demos/streamlit/app.py "$@"
@@ -118,7 +118,7 @@ case "$cmd" in
     docker compose logs -f "$@"
     ;;
   migrate)
-    python -m alembic upgrade head
+    python -m alembic -c migrations/alembic.ini upgrade head
     ;;
   image)
     docker build -t privacy-act-rag:dev .

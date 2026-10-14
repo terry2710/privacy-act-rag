@@ -1,5 +1,5 @@
 # Hugging Face Space (Gradio) dependencies. Kept self-contained rather than including
-# requirements-core.txt; tests/test_requirements_sync.py fails if the two drift apart.
+# requirements/core.txt; tests/test_requirements_sync.py fails if the two drift apart.
 gradio
 boto3
 langchain-core

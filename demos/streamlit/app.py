@@ -35,7 +35,7 @@ for _key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION",
 
 # Imported only after the secrets copy above: rag_backend and rag_logging read their
 # configuration from environment variables at import time.
-import rag_backend as demo  ### replace rag_backend with your backend filename
+from core import rag_backend as demo  ### replace rag_backend with your backend filename
 
 new_title = '<p style="font-family:sans-serif; color:Green; font-size: 42px;">Privacy Act Q&A with RAG 🎯</p>'
 st.markdown(new_title, unsafe_allow_html=True)  ### Modify Title

@@ -2,7 +2,7 @@
 
 ```bash
 conda activate aws
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 
 pytest                      # offline only - no AWS calls, no cost
 PRV_TEST_AWS=1 pytest       # everything, including Bedrock and CloudWatch
@@ -16,7 +16,7 @@ PRV_TEST_AWS=1 pytest       # everything, including Bedrock and CloudWatch
 | `test_rag_e2e.py` | `PRV_TEST_AWS=1`, `faiss_index/` | A real retrieval + Bedrock turn: token usage, cosine ordering, unit-norm embeddings, on- vs off-topic score separation. |
 | `test_cloudwatch.py` | `PRV_TEST_AWS=1` | The sink: group/stream creation, delivery and ordering, retention, and silent degradation on bad credentials. |
 | `test_insights_queries.py` | `PRV_TEST_AWS=1` | Every Logs Insights query in the main README, run for real against seeded events. |
-| `test_app_boot.py` | `PRV_TEST_AWS=1`, `faiss_index/` | Boots `rag_frontend.py` through Streamlit's `AppTest`, asks a question, checks an answer renders and the turn is logged. |
+| `test_streamlit_demo.py` | `PRV_TEST_AWS=1`, `faiss_index/` for the boot tests; none for the page-config check | Boots `demos/streamlit/app.py` through Streamlit's `AppTest`, asks a question, checks an answer renders and the turn is logged. The page-config ordering check runs offline. |
 
 AWS-backed tests **skip by default** — they call Bedrock and CloudWatch, which costs money.
 Setting `PRV_TEST_AWS=1` without working credentials skips them too, with the reason shown.

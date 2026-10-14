@@ -60,8 +60,8 @@ def reload_logging(**env):
     rag_logging captures PRV_LOG_* at import time and builds its CloudWatch sink there, so
     changing configuration means reloading the module and rebinding it on rag_backend.
     """
-    import rag_backend
-    import rag_logging
+    from core import rag_backend
+    from core import rag_logging
 
     previous = {k: os.environ.get(k) for k in env}
     old_sink = getattr(rag_logging, "_sink", None)
