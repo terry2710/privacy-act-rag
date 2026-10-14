@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: privacyrag
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d privacyrag"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  elasticmq:
+    image: softwaremill/elasticmq-native
+    ports:
+      - "9324:9324"
+      - "9325:9325"
+    volumes:
+      - ./infra/local/elasticmq.conf:/opt/elasticmq.conf:ro
+
+  api:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+      - AWS_DEFAULT_REGION
+      - DATABASE_URL=postgresql+psycopg://app:app@postgres:5432/privacyrag
+      - SQS_ENDPOINT_URL=http://elasticmq:9324
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: ["python", "-m", "worker.main"]
+    profiles: ["worker"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+      - AWS_DEFAULT_REGION
+      - DATABASE_URL=postgresql+psycopg://app:app@postgres:5432/privacyrag
+      - SQS_ENDPOINT_URL=http://elasticmq:9324
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticmq:
+        condition: service_started
+
+volumes:
+  pgdata:

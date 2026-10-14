@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: privacy-act-rag
+data:
+  AWS_DEFAULT_REGION: "us-east-1"
+  PRV_EMBEDDING_PROVIDER: "bedrock"
+  PRV_S3_BUCKET: ""
+  SQS_ENDPOINT_URL: "http://elasticmq:9324"
+  SQS_QUEUE_NAME: "ingestion"

@@ -17,3 +17,14 @@ __pycache__/
 
 # IDE
 .idea/
+
+# Commit message
+.commit_msgs/
+
+# Front end, Terraform and test caches
+node_modules/
+frontend/dist/
+.terraform/
+*.tfstate
+*.tfstate.*
+.pytest_cache/
