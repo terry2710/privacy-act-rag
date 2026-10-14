@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-api.txt -r requirements-dev.txt -r requirements-ml.txt
       - name: Compile Python modules
-        run: python -m py_compile app.py rag_backend.py rag_evaluation.py rag_logging.py rag_retrieval.py api/*.py worker/*.py
+        run: python -m py_compile app.py rag_backend.py rag_evaluation.py rag_logging.py rag_retrieval.py api/*.py worker/*.py demos/streamlit/app.py
       - name: Run offline tests
         run: pytest -m "not aws and not index"
       - name: Cache Hugging Face model weights

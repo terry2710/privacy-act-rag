@@ -194,9 +194,12 @@ pip install -r requirements.txt
 python app.py
 ```
 
-`requirements.txt` is the production dependency set - it is what both live deployments install
-(this repo backs both the Gradio app on this HF Space and a separate Streamlit Community Cloud
-deployment of `rag_frontend.py`, sharing this same `main` branch). The open-embedding tooling
+Dependencies are split by consumer: `requirements-core.txt` is the shared retrieval core,
+`requirements.txt` is the Gradio app on this HF Space, `demos/streamlit/requirements.txt` is the
+detached Streamlit demo (`demos/streamlit/app.py`, deployed separately on Streamlit Community
+Cloud), and `requirements-api.txt` adds the HTTP API. The Space and Streamlit files repeat the
+core list instead of including it, and `tests/test_requirements_sync.py` fails if they drift.
+The open-embedding tooling
 (`compare_embeddings.py`, `check_eval_regression.py`) needs its own extra dependencies -
 `sentence-transformers` pulls in `torch`, which is large and irrelevant to either production
 app - so those live in `requirements-ml.txt` instead and are never installed by either

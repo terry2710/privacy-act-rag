@@ -4,16 +4,23 @@ Regression guard for the boot failure where `"key" in st.secrets` raised FileNot
 no secrets.toml present, killing the script before any widget rendered - so the app produced
 neither answers nor logs, with nothing in the log group to explain why.
 """
+import os
+
 import pytest
 
-pytestmark = [pytest.mark.aws, pytest.mark.index]
+STREAMLIT_APP = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                             "demos", "streamlit", "app.py")
+
+
+def live(test):
+    return pytest.mark.aws(pytest.mark.index(test))
 
 QUESTION = "What is a credit reporting body?"
 
 
 @pytest.fixture(scope="module")
 def app_run(aws, index_dir, tmp_path_factory):
-    """Boot rag_frontend.py, ask one question, return the AppTest plus what got logged."""
+    """Boot the Streamlit demo, ask one question, return the AppTest plus what got logged."""
     import json
     import os
     from streamlit.testing.v1 import AppTest
@@ -24,8 +31,7 @@ def app_run(aws, index_dir, tmp_path_factory):
     os.chdir(PROJECT_ROOT)   # the app resolves faiss_index/ relative to the working directory
     try:
         with reload_logging(PRV_LOG_GROUP="", PRV_QA_LOG_FILE=str(log_file)):
-            at = AppTest.from_file(os.path.join(PROJECT_ROOT, "rag_frontend.py"),
-                                   default_timeout=600)
+            at = AppTest.from_file(STREAMLIT_APP, default_timeout=600)
             at.run()
             boot_exception = list(at.exception)
             at.text_area[0].set_value(QUESTION)
@@ -37,22 +43,26 @@ def app_run(aws, index_dir, tmp_path_factory):
     return at, boot_exception, events
 
 
+@live
 def test_app_boots_without_secrets_toml(app_run):
     _, boot_exception, _ = app_run
     assert boot_exception == [], f"the app raised on startup: {boot_exception}"
 
 
+@live
 def test_widgets_render(app_run):
     at, _, _ = app_run
     assert len(at.text_area) == 1, "the question box did not render"
     assert len(at.button) == 1
 
 
+@live
 def test_asking_a_question_does_not_raise(app_run):
     at, _, _ = app_run
     assert list(at.exception) == []
 
 
+@live
 def test_an_answer_is_displayed(app_run):
     at, _, _ = app_run
     rendered = " ".join(m.value for m in at.markdown)
@@ -60,6 +70,7 @@ def test_an_answer_is_displayed(app_run):
     assert len(rendered.strip()) > 100, "no answer was written to the page"
 
 
+@live
 def test_session_id_is_a_generated_hex(app_run):
     at, _, _ = app_run
     session_id = at.session_state["session_id"]
@@ -67,6 +78,7 @@ def test_session_id_is_a_generated_hex(app_run):
     int(session_id, 16)   # must be hex
 
 
+@live
 def test_the_turn_was_logged_under_the_app_session(app_run):
     at, _, events = app_run
     assert len(events) == 1, f"expected one logged turn, got {len(events)}"
@@ -82,11 +94,9 @@ def test_the_turn_was_logged_under_the_app_session(app_run):
 def test_set_page_config_is_the_first_streamlit_call():
     """Reading st.secrets emits a Streamlit command, so set_page_config must precede it."""
     import ast
-    import os
-    from conftest import PROJECT_ROOT
 
     # Parsed rather than string-searched: the surrounding comments mention st.secrets too.
-    tree = ast.parse(open(os.path.join(PROJECT_ROOT, "rag_frontend.py"), encoding="utf-8").read())
+    tree = ast.parse(open(STREAMLIT_APP, encoding="utf-8").read())
     page_config = [n.lineno for n in ast.walk(tree)
                    if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
                    and n.func.attr == "set_page_config"]
@@ -94,7 +104,7 @@ def test_set_page_config_is_the_first_streamlit_call():
                if isinstance(n, ast.Attribute) and n.attr == "secrets"
                and isinstance(n.value, ast.Name) and n.value.id == "st"]
 
-    assert page_config, "rag_frontend.py no longer calls st.set_page_config"
-    assert secrets, "rag_frontend.py no longer reads st.secrets"
+    assert page_config, "the Streamlit demo no longer calls st.set_page_config"
+    assert secrets, "the Streamlit demo no longer reads st.secrets"
     assert min(page_config) < min(secrets), \
         "set_page_config must come before the st.secrets read or Streamlit rejects it"

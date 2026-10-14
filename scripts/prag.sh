@@ -25,7 +25,7 @@ quality
 run
   api           uvicorn api.main:app with reload (PORT, default 8000)
   gradio        python app.py
-  streamlit     streamlit run rag_frontend.py
+  streamlit     streamlit run demos/streamlit/app.py (needs demos/streamlit/requirements.txt)
 
 call a running API (BASE_URL, default http://localhost:$PORT)
   live          GET /health/live
@@ -60,7 +60,7 @@ USAGE
 }
 
 compile_all() {
-  python -m py_compile app.py rag_backend.py rag_evaluation.py rag_logging.py rag_retrieval.py api/*.py worker/*.py
+  python -m py_compile app.py rag_backend.py rag_evaluation.py rag_logging.py rag_retrieval.py api/*.py worker/*.py demos/streamlit/app.py
 }
 
 cmd="${1:-help}"
@@ -88,7 +88,7 @@ case "$cmd" in
     exec python app.py "$@"
     ;;
   streamlit)
-    exec python -m streamlit run rag_frontend.py "$@"
+    exec python -m streamlit run demos/streamlit/app.py "$@"
     ;;
   live)
     curl -fsS "$BASE_URL/health/live"
