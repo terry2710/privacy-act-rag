@@ -1,9 +1,17 @@
 .git
 .venv
-__pycache__
-*.pyc
+venv
+**/__pycache__
+**/*.pyc
+.pytest_cache
 faiss_index*/
-.env
+**/.env
+**/.env.*
+**/.streamlit
+**/*.pem
+**/*.key
+**/.DS_Store
+data/feedback_queue.json
 .commit_msgs
 .idea
 frontend
@@ -11,3 +19,5 @@ infra
 docs
 tests
 demos
+tools
+migrations

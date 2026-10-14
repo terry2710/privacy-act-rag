@@ -1,30 +1,48 @@
-# Regenerated locally / restored from S3 - don't commit the (large) built index
-# (faiss_index*/ covers the default and every provider-namespaced variant, e.g.
-# faiss_index_bge/ from the open-embedding comparison and CI regression gate)
+# Local index caches, rebuilt locally or restored from S3
 faiss_index*/
 
-# Pulled fresh from CloudWatch by feedback_review.py on every run - never commit it
+# Production feedback pulled from CloudWatch; contains real user questions
 data/feedback_queue.json
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+**/.streamlit/secrets.toml
+*.pem
+*.key
+*.tfvars
+*.tfvars.json
 
 # Python
 __pycache__/
 *.pyc
 .venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Secrets - never commit AWS credentials or Streamlit secrets
-.streamlit/secrets.toml
-.env
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
 
-# IDE
-.idea/
-
-# Commit message
-.commit_msgs/
-
-# Front end, Terraform and test caches
+# Front end
 node_modules/
 frontend/dist/
+
+# Terraform
 .terraform/
 *.tfstate
 *.tfstate.*
-.pytest_cache/
+crash.log
+
+# Editors and operating system
+.idea/
+.DS_Store
+
+# Commit messages drafted locally
+.commit_msgs/
