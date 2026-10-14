@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__
+*.pyc
+faiss_index*/
+.env
+.commit_msgs
+.idea
+frontend
+infra
+docs
+tests
