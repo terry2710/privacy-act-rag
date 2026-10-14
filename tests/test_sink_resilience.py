@@ -7,7 +7,7 @@ deliberately silent.
 """
 import pytest
 
-import rag_logging
+from core import rag_logging
 
 
 class ResourceAlreadyExists(Exception):

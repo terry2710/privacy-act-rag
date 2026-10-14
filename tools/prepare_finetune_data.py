@@ -19,8 +19,8 @@ Needs only what's already in requirements.txt (langchain-community, langchain-te
 pypdf) - no heavy ML deps, since this step does no embedding, just text search.
 
 Usage:
-    python prepare_finetune_data.py
-    python prepare_finetune_data.py --candidates data/finetune_candidates.json --out data/finetune_confirmed.json
+    python -m tools.prepare_finetune_data
+    python -m tools.prepare_finetune_data --candidates data/finetune_candidates.json --out data/finetune_confirmed.json
 """
 import argparse
 import json
@@ -32,8 +32,8 @@ from langchain_community.document_loaders.pdf import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 PDF_URL = "https://www.legislation.gov.au/C2004A03712/2026-06-04/2026-06-04/text/original/pdf"
-DEFAULT_CANDIDATES = Path(__file__).parent / "data" / "finetune_candidates.json"
-DEFAULT_OUT = Path(__file__).parent / "data" / "finetune_confirmed.json"
+DEFAULT_CANDIDATES = Path(__file__).resolve().parents[1] / "data" / "finetune_candidates.json"
+DEFAULT_OUT = Path(__file__).resolve().parents[1] / "data" / "finetune_confirmed.json"
 
 
 def normalize_text(text):

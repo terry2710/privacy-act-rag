@@ -8,7 +8,7 @@ import os
 
 import pytest
 
-import rag_backend
+from core import rag_backend
 
 
 @pytest.fixture

@@ -1,9 +1,9 @@
 """Standalone comparison: production Titan embeddings vs. an open sentence-transformers model.
 
 Usage:
-    python compare_embeddings.py                                  # builds/evaluates the open (bge) index
-    PRV_EMBEDDING_PROVIDER=bedrock python compare_embeddings.py    # re-run the Titan path (needs AWS creds)
-    PRV_EMBEDDING_PROVIDER=bge-ft python compare_embeddings.py     # roadmap 1.3: the bge-base-en-v1.5
+    python -m tools.compare_embeddings                                  # builds/evaluates the open (bge) index
+    PRV_EMBEDDING_PROVIDER=bedrock python -m tools.compare_embeddings    # re-run the Titan path (needs AWS creds)
+    PRV_EMBEDDING_PROVIDER=bge-ft python -m tools.compare_embeddings     # roadmap 1.3: the bge-base-en-v1.5
                                                                     # checkpoint fine-tuned on
                                                                     # data/finetune_confirmed.json instead
                                                                     # of the plain base model above
@@ -21,8 +21,8 @@ import sys
 os.environ.setdefault("PRV_EMBEDDING_PROVIDER", "bge")
 os.environ.setdefault("PRV_LOG_GROUP", "")  # no CloudWatch needed for a local comparison run
 
-import rag_backend
-import rag_evaluation
+from core import rag_backend
+from core import rag_evaluation
 
 # From the project handoff (2026-09-15): dense retrieval baseline over the same 25-case dataset.
 RECORDED_BASELINES = {

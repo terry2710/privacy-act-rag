@@ -4,8 +4,8 @@ from langchain_core.documents import Document
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
-import rag_backend
-import rag_logging
+from core import rag_backend
+from core import rag_logging
 
 SHORT_A = "Principle 1: collection of personal information must be lawful."
 SHORT_B = "Principle 2: anonymity and pseudonymity options must be offered."

@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-from rag_retrieval import HybridReranker, tokenize
+from core.rag_retrieval import HybridReranker, tokenize
 
 
 class FakeDocstore:

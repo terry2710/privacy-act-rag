@@ -15,8 +15,8 @@ script can never accidentally rack up Bedrock or S3 cost, whatever is configured
 running shell or CI secrets.
 
 Usage:
-    python check_eval_regression.py                   # compare against data/eval_baseline.json
-    python check_eval_regression.py --update-baseline  # after a deliberate, reviewed change
+    python -m tools.check_eval_regression                   # compare against data/eval_baseline.json
+    python -m tools.check_eval_regression --update-baseline  # after a deliberate, reviewed change
 
 Exit codes: 0 = no regression, 1 = regression, 2 = setup/config error.
 """
@@ -26,7 +26,7 @@ import os
 import sys
 from pathlib import Path
 
-BASELINE_PATH = Path(__file__).parent / "data" / "eval_baseline.json"
+BASELINE_PATH = Path(__file__).resolve().parents[1] / "data" / "eval_baseline.json"
 
 # Small absolute tolerance: given a fixed model + dataset, BGE/CPU results are deterministic,
 # so any drop at all usually means either a real regression or the dataset changed - not noise.
@@ -84,8 +84,8 @@ def main(argv=None):
     os.environ["PRV_S3_BUCKET"] = ""
     os.environ.setdefault("PRV_LOG_GROUP", "")
 
-    import rag_backend
-    import rag_evaluation
+    from core import rag_backend
+    from core import rag_evaluation
 
     if rag_backend.EMBEDDING_PROVIDER != "bge":
         print(f"refusing to run: provider={rag_backend.EMBEDDING_PROVIDER!r} (expected 'bge' - "

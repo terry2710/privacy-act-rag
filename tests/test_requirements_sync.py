@@ -13,12 +13,12 @@ def read_requirements(path):
 
 
 def test_gradio_requirements_include_core():
-    core = read_requirements(ROOT / "requirements-core.txt")
+    core = read_requirements(ROOT / "requirements" / "core.txt")
     gradio = read_requirements(ROOT / "requirements.txt")
     assert core <= gradio, sorted(core - gradio)
 
 
 def test_streamlit_requirements_include_core():
-    core = read_requirements(ROOT / "requirements-core.txt")
+    core = read_requirements(ROOT / "requirements" / "core.txt")
     streamlit = read_requirements(ROOT / "demos" / "streamlit" / "requirements.txt")
     assert core <= streamlit, sorted(core - streamlit)

@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-import rag_evaluation
+from core import rag_evaluation
 
 
 class FakeIndex:

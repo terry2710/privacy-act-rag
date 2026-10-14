@@ -5,7 +5,7 @@ against the real log group, since they need real CloudWatch data and cost a smal
 Logs Insights scan time; what's tested here is the joining/merging logic, which is where a
 silent bug (dropped item, clobbered human annotation) would actually hurt.
 """
-from feedback_review import build_queue, merge_queue
+from tools.feedback_review import build_queue, merge_queue
 
 
 def test_build_queue_joins_qa_fields_by_request_id():

@@ -1,12 +1,18 @@
 import os
+import sys
 import threading
 import uuid
+from pathlib import Path
 
 import gradio as gr
 import spaces
 
-import rag_backend
-import rag_evaluation
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from core import rag_backend
+from core import rag_evaluation
 
 
 _vector_index = None

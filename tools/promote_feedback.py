@@ -8,7 +8,7 @@ data/retrieval_eval.json so check_eval_regression.py (and every future embedding
 is tested against it forever after.
 
 Workflow:
-    1. python feedback_review.py                     # writes/updates data/feedback_queue.json
+    1. python -m tools.feedback_review                     # writes/updates data/feedback_queue.json
     2. Open data/feedback_queue.json; for each item worth turning into a regression case, edit
        it in place:
            "review_status": "promoted",
@@ -17,7 +17,7 @@ Workflow:
            "expected_terms": ["a distinctive phrase from that section"],
        Set review_status to "dismissed" for feedback that isn't a real retrieval defect
        (ambiguous question, user error, etc.) so it stops showing as pending.
-    3. python promote_feedback.py                    # appends promoted items, bumps
+    3. python -m tools.promote_feedback                    # appends promoted items, bumps
                                                       #   dataset_version, marks the queue item
                                                       #   "promoted_committed" so a rerun never
                                                       #   double-appends it.
@@ -30,8 +30,8 @@ import json
 import sys
 from pathlib import Path
 
-QUEUE_PATH = Path(__file__).parent / "data" / "feedback_queue.json"
-DATASET_PATH = Path(__file__).parent / "data" / "retrieval_eval.json"
+QUEUE_PATH = Path(__file__).resolve().parents[1] / "data" / "feedback_queue.json"
+DATASET_PATH = Path(__file__).resolve().parents[1] / "data" / "retrieval_eval.json"
 REQUIRED_ANNOTATIONS = ("category", "source_section", "expected_terms")
 REQUIRED_CASE_FIELDS = {"id", "category", "question", "source_section", "expected_terms"}
 
