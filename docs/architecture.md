@@ -8,7 +8,7 @@ Target architecture for the full-stack upgrade. Each component carries a status,
 |---|---|---|
 | Retrieval and generation core (core/) | FAISS retrieval, Bedrock embeddings and generation | Built, pre-existing |
 | HTTP API (api/) | Query and feedback endpoints, request IDs, health probes | Built, offline tests passing |
-| Database (Postgres) | Documents, queries, feedback, reports | Models defined, migrations pending |
+| Database (Postgres) | Documents, queries, feedback, reports | Initial migration; queries and feedback persisted, best effort |
 | Authentication (Cognito) | User identity, ownership checks | Planned |
 | Ingestion (S3, SQS, worker) | Asynchronous document parsing and indexing | Skeleton only |
 | Compliance agent (LangGraph, MCP) | Clause-by-clause analysis with citations | Planned |

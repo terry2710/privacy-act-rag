@@ -1,7 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.pool import StaticPool
 
+from api.db import Base, make_session_factory
 from api.main import create_app
+from api.repository import SqlRepository
 
 
 class FakeService:
@@ -37,14 +41,38 @@ class FakeService:
         self.feedback.append((request_id, session_id, rating))
 
 
+class FakeRepository:
+    def __init__(self, persist=True):
+        self.persist = persist
+        self.queries = []
+        self.feedback = []
+
+    def save_query(self, **fields):
+        self.queries.append(fields)
+        return self.persist
+
+    def save_feedback(self, request_id, owner_sub, rating):
+        self.feedback.append((request_id, owner_sub, rating))
+        return self.persist
+
+
+def make_client(service=None, repository=None):
+    return TestClient(create_app(service or FakeService(), repository or FakeRepository()))
+
+
 @pytest.fixture
 def service():
     return FakeService()
 
 
 @pytest.fixture
-def client(service):
-    return TestClient(create_app(service))
+def repository():
+    return FakeRepository()
+
+
+@pytest.fixture
+def client(service, repository):
+    return make_client(service, repository)
 
 
 def test_live_returns_ok(client):
@@ -54,8 +82,7 @@ def test_live_returns_ok(client):
 
 
 def test_ready_reflects_service_state():
-    client = TestClient(create_app(FakeService(ready=False)))
-    response = client.get("/health/ready")
+    response = make_client(service=FakeService(ready=False)).get("/health/ready")
     assert response.status_code == 503
     assert response.json() == {"status": "not_ready"}
 
@@ -96,21 +123,55 @@ def test_query_rejects_missing_body(client):
 
 
 def test_query_upstream_failure_returns_502_without_leaking_detail():
-    client = TestClient(create_app(FakeService(fail=True)))
-    response = client.post("/api/queries", json={"question": "What is APP 1?"})
+    response = make_client(service=FakeService(fail=True)).post(
+        "/api/queries", json={"question": "What is APP 1?"}
+    )
     assert response.status_code == 502
     assert response.json()["error"] == "upstream_error"
     assert "bedrock" not in response.text
 
 
-def test_feedback_is_recorded(client, service):
+def test_query_is_persisted(client, repository):
+    client.post("/api/queries", json={"question": "  What is APP 1?  "})
+    assert len(repository.queries) == 1
+    saved = repository.queries[0]
+    assert saved["request_id"] == "req123"
+    assert saved["owner_sub"] == "anonymous"
+    assert saved["question"] == "What is APP 1?"
+    assert saved["outcome"] == "answered"
+
+
+def test_failed_query_is_not_persisted(repository):
+    make_client(FakeService(fail=True), repository).post(
+        "/api/queries", json={"question": "What is APP 1?"}
+    )
+    assert repository.queries == []
+
+
+def test_query_succeeds_when_persistence_fails():
+    response = make_client(repository=FakeRepository(persist=False)).post(
+        "/api/queries", json={"question": "What is APP 1?"}
+    )
+    assert response.status_code == 200
+
+
+def test_feedback_is_recorded_and_persisted(client, service, repository):
     response = client.post(
         "/api/feedback",
         json={"request_id": "req123", "session_id": "sess1", "rating": "helpful"},
     )
     assert response.status_code == 200
-    assert response.json() == {"status": "recorded"}
+    assert response.json() == {"status": "recorded", "persisted": True}
     assert service.feedback == [("req123", "sess1", "helpful")]
+    assert repository.feedback == [("req123", "anonymous", "helpful")]
+
+
+def test_feedback_reports_when_not_persisted():
+    response = make_client(repository=FakeRepository(persist=False)).post(
+        "/api/feedback", json={"request_id": "req123", "rating": "helpful"}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"status": "recorded", "persisted": False}
 
 
 def test_feedback_rejects_unknown_rating(client):
@@ -119,3 +180,16 @@ def test_feedback_rejects_unknown_rating(client):
         json={"request_id": "req123", "rating": "excellent"},
     )
     assert response.status_code == 422
+
+
+def test_query_then_feedback_round_trip_with_sql_repository():
+    engine = create_engine(
+        "sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False}
+    )
+    Base.metadata.create_all(engine)
+    client = make_client(repository=SqlRepository(make_session_factory(engine)))
+
+    client.post("/api/queries", json={"question": "What is APP 1?"})
+    response = client.post("/api/feedback", json={"request_id": "req123", "rating": "helpful"})
+
+    assert response.json() == {"status": "recorded", "persisted": True}

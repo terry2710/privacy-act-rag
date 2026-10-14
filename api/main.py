@@ -1,9 +1,10 @@
 import logging
 import uuid
 
-from fastapi import FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from api.repository import ANONYMOUS_OWNER, build_repository
 from api.schemas import (
     Citation,
     ErrorResponse,
@@ -17,9 +18,10 @@ from api.service import RagService
 logger = logging.getLogger("api")
 
 
-def create_app(service=None):
-    app = FastAPI(title="Privacy Act RAG API", version="0.1.0")
+def create_app(service=None, repository=None):
+    app = FastAPI(title="Privacy Act RAG API", version="0.2.0")
     app.state.service = service or RagService()
+    app.state.repository = repository or build_repository()
 
     @app.middleware("http")
     async def attach_request_id(request: Request, call_next):
@@ -43,7 +45,7 @@ def create_app(service=None):
         response_model=QueryResponse,
         responses={502: {"model": ErrorResponse}},
     )
-    def create_query(body: QueryRequest):
+    def create_query(body: QueryRequest, background_tasks: BackgroundTasks):
         try:
             result = app.state.service.answer(body.question, body.session_id)
         except Exception:
@@ -55,30 +57,41 @@ def create_app(service=None):
                     "message": "The answer could not be generated. Please try again.",
                 },
             )
-        citations = [
-            Citation(
-                rank=chunk.get("rank"),
-                chunk_id=chunk.get("chunk_id"),
-                page=chunk.get("page"),
-                source=chunk.get("source"),
-                score=chunk.get("score"),
-                text=chunk.get("text"),
-            )
-            for chunk in result["chunks"]
-        ]
-        return QueryResponse(
+        response = QueryResponse(
             request_id=result["request_id"],
             session_id=result["session_id"],
             answer=result["answer"],
-            citations=citations,
+            citations=[
+                Citation(
+                    rank=chunk.get("rank"),
+                    chunk_id=chunk.get("chunk_id"),
+                    page=chunk.get("page"),
+                    source=chunk.get("source"),
+                    score=chunk.get("score"),
+                    text=chunk.get("text"),
+                )
+                for chunk in result["chunks"]
+            ],
             outcome="answered",
             pipeline_version=result["pipeline_version"],
         )
+        background_tasks.add_task(
+            app.state.repository.save_query,
+            request_id=response.request_id,
+            session_id=response.session_id,
+            owner_sub=ANONYMOUS_OWNER,
+            question=body.question,
+            answer=response.answer,
+            outcome=response.outcome,
+            pipeline_version=response.pipeline_version,
+        )
+        return response
 
     @app.post("/api/feedback", response_model=FeedbackResponse)
     def create_feedback(body: FeedbackRequest):
         app.state.service.record_feedback(body.request_id, body.session_id, body.rating)
-        return FeedbackResponse(status="recorded")
+        persisted = app.state.repository.save_feedback(body.request_id, ANONYMOUS_OWNER, body.rating)
+        return FeedbackResponse(status="recorded", persisted=persisted)
 
     return app
 

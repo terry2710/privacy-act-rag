@@ -8,6 +8,12 @@ if [ -f "$ROOT/.venv/bin/activate" ]; then
   . "$ROOT/.venv/bin/activate"
 fi
 
+if [ -f "$ROOT/.env" ]; then
+  set -a
+  . "$ROOT/.env"
+  set +a
+fi
+
 PORT="${PORT:-8000}"
 BASE_URL="${BASE_URL:-http://localhost:$PORT}"
 OFFLINE_MARKERS="not aws and not index"
@@ -38,6 +44,7 @@ stack
   stack         build and start every compose service
   logs          follow compose logs
   migrate       alembic upgrade head
+  db-check      alembic check: models and database schema agree
   image         build the application image
   web           start the front-end dev server
   web-check     front-end lint, type check, tests and build
@@ -119,6 +126,9 @@ case "$cmd" in
     ;;
   migrate)
     python -m alembic -c migrations/alembic.ini upgrade head
+    ;;
+  db-check)
+    python -m alembic -c migrations/alembic.ini check
     ;;
   image)
     docker build -t privacy-act-rag:dev .

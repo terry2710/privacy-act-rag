@@ -9,7 +9,9 @@ class Base(DeclarativeBase):
 
 
 def make_engine(url=None):
-    return create_engine(url or get_settings().database_url, pool_pre_ping=True)
+    url = url or get_settings().database_url
+    connect_args = {"connect_timeout": 3} if url.startswith("postgresql") else {}
+    return create_engine(url, pool_pre_ping=True, connect_args=connect_args)
 
 
 def make_session_factory(engine):

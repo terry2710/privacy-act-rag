@@ -42,6 +42,7 @@ class FeedbackRequest(BaseModel):
 
 class FeedbackResponse(BaseModel):
     status: Literal["recorded"]
+    persisted: bool
 
 
 class ErrorResponse(BaseModel):
