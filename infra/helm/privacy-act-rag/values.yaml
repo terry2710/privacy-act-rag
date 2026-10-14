@@ -1,0 +1,21 @@
+replicaCount: 1
+
+image:
+  repository: privacy-act-rag
+  tag: dev
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8000
+
+config:
+  AWS_DEFAULT_REGION: us-east-1
+  PRV_EMBEDDING_PROVIDER: bedrock
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
