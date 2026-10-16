@@ -24,7 +24,11 @@ services:
       - ./infra/local/elasticmq.conf:/opt/elasticmq.conf:ro
 
   api:
-    build: .
+    image: privacy-act-rag:dev
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     env_file:
       - path: .env
         required: false
@@ -32,9 +36,12 @@ services:
       - AWS_ACCESS_KEY_ID
       - AWS_SECRET_ACCESS_KEY
       - AWS_SESSION_TOKEN
+      - AWS_PROFILE
       - AWS_DEFAULT_REGION
       - DATABASE_URL=postgresql+psycopg://app:app@postgres:5432/privacyrag
       - SQS_ENDPOINT_URL=http://elasticmq:9324
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
     ports:
       - "8000:8000"
     depends_on:
@@ -42,7 +49,7 @@ services:
         condition: service_healthy
 
   worker:
-    build: .
+    image: privacy-act-rag:dev
     command: ["python", "-m", "worker.main"]
     profiles: ["worker"]
     env_file:
@@ -52,9 +59,12 @@ services:
       - AWS_ACCESS_KEY_ID
       - AWS_SECRET_ACCESS_KEY
       - AWS_SESSION_TOKEN
+      - AWS_PROFILE
       - AWS_DEFAULT_REGION
       - DATABASE_URL=postgresql+psycopg://app:app@postgres:5432/privacyrag
       - SQS_ENDPOINT_URL=http://elasticmq:9324
+    volumes:
+      - ${HOME}/.aws:/home/app/.aws:ro
     depends_on:
       postgres:
         condition: service_healthy

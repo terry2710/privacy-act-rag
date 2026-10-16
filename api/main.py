@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from api.config import get_settings
 from api.repository import ANONYMOUS_OWNER, build_repository
 from api.schemas import (
     Citation,
@@ -43,7 +44,7 @@ def create_app(service=None, repository=None):
 
     @app.get("/health/live")
     def live():
-        return {"status": "ok"}
+        return {"status": "ok", "version": get_settings().app_version}
 
     @app.get("/health/ready")
     def ready():

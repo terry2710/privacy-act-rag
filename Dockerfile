@@ -1,7 +1,10 @@
 FROM python:3.11-slim
 
+ARG APP_VERSION=dev
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    APP_VERSION=${APP_VERSION}
 
 WORKDIR /app
 
@@ -12,7 +15,7 @@ COPY api ./api
 COPY worker ./worker
 COPY agent ./agent
 COPY core ./core
-COPY data ./data
+COPY migrations ./migrations
 
 RUN useradd --create-home --uid 10001 app && chown -R app /app
 USER app

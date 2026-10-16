@@ -86,10 +86,12 @@ def client(service, repository):
     return make_client(service, repository)
 
 
-def test_live_returns_ok(client):
+def test_live_reports_status_and_version(client):
     response = client.get("/health/live")
+    body = response.json()
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert body["status"] == "ok"
+    assert body["version"]
 
 
 def test_ready_reflects_service_state():

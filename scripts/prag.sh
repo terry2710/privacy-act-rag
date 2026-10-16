@@ -43,6 +43,7 @@ stack
   up            start Postgres and the local queue
   down          stop all compose services
   stack         build and start every compose service
+  stack-migrate run database migrations inside the api container
   logs          follow compose logs
   migrate       alembic upgrade head
   db-check      alembic check: models and database schema agree
@@ -123,7 +124,10 @@ case "$cmd" in
     docker compose down "$@"
     ;;
   stack)
-    docker compose up --build "$@"
+    APP_VERSION="$(git rev-parse --short HEAD)" docker compose up --build "$@"
+    ;;
+  stack-migrate)
+    docker compose run --rm api python -m alembic -c migrations/alembic.ini upgrade head
     ;;
   logs)
     docker compose logs -f "$@"
@@ -135,7 +139,7 @@ case "$cmd" in
     python -m alembic -c migrations/alembic.ini check
     ;;
   image)
-    docker build -t privacy-act-rag:dev .
+    docker build --build-arg APP_VERSION="$(git rev-parse --short HEAD)" -t privacy-act-rag:dev -t "privacy-act-rag:$(git rev-parse --short HEAD)" .
     ;;
   web)
     cd frontend

@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    app_version: str = "dev"
     database_url: str = ""
     sqs_endpoint_url: Optional[str] = None
     sqs_queue_name: str = "ingestion"
