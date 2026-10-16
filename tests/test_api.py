@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -6,18 +8,27 @@ from sqlalchemy.pool import StaticPool
 from api.db import Base, make_session_factory
 from api.main import create_app
 from api.repository import SqlRepository
+from api.service import IndexNotReady
 
 
 class FakeService:
-    def __init__(self, ready=True, fail=False):
+    def __init__(self, ready=True, fail=False, index_missing=False):
         self.ready = ready
         self.fail = fail
+        self.index_missing = index_missing
         self.feedback = []
+        self.warmed_up = threading.Event()
+
+    def warm_up(self, wait=True):
+        self.warmed_up.set()
+        return self.ready
 
     def is_ready(self):
         return self.ready
 
     def answer(self, question, session_id=None):
+        if self.index_missing:
+            raise IndexNotReady()
         if self.fail:
             raise RuntimeError("bedrock unavailable")
         return {
@@ -193,3 +204,18 @@ def test_query_then_feedback_round_trip_with_sql_repository():
     response = client.post("/api/feedback", json={"request_id": "req123", "rating": "helpful"})
 
     assert response.json() == {"status": "recorded", "persisted": True}
+
+
+def test_query_returns_503_while_index_is_not_ready(repository):
+    response = make_client(FakeService(index_missing=True), repository).post(
+        "/api/queries", json={"question": "What is APP 1?"}
+    )
+    assert response.status_code == 503
+    assert response.json()["error"] == "index_not_ready"
+    assert response.headers["retry-after"] == "30"
+    assert repository.queries == []
+
+
+def test_startup_warms_up_index_in_background(service, repository):
+    with TestClient(create_app(service, repository)):
+        assert service.warmed_up.wait(timeout=2)

@@ -1,34 +1,53 @@
+import logging
 import threading
 import uuid
 
+logger = logging.getLogger("api.service")
+
+
+class IndexNotReady(Exception):
+    pass
+
+
+def load_cached_index():
+    from core import rag_backend
+
+    return rag_backend.prv_load_cached_index()
+
 
 class RagService:
-    def __init__(self):
+    def __init__(self, index_loader=load_cached_index):
         self._index = None
+        self._index_loader = index_loader
         self._lock = threading.Lock()
 
-    def _get_index(self):
-        if self._index is None:
-            with self._lock:
-                if self._index is None:
-                    from core import rag_backend
-
-                    self._index = rag_backend.prv_index()
-        return self._index
-
-    def is_ready(self):
+    def warm_up(self, wait=True):
         if self._index is not None:
             return True
-        from core import rag_backend
+        if not self._lock.acquire(blocking=wait):
+            return False
+        try:
+            if self._index is None:
+                self._index = self._index_loader()
+                if self._index is None:
+                    logger.warning("no cached index available; run python -m tools.build_index")
+        except Exception:
+            logger.warning("index warm-up failed", exc_info=True)
+        finally:
+            self._lock.release()
+        return self._index is not None
 
-        return rag_backend._index_is_cached()
+    def is_ready(self):
+        return self._index is not None
 
     def answer(self, question, session_id=None):
+        if not self.warm_up(wait=False):
+            raise IndexNotReady()
         from core import rag_backend
 
         session_id = session_id or uuid.uuid4().hex[:12]
         answer, details = rag_backend.prv_rag_response(
-            index=self._get_index(),
+            index=self._index,
             question=question,
             session_id=session_id,
             return_details=True,

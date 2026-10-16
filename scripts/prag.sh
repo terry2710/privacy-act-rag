@@ -32,6 +32,7 @@ run
   api           uvicorn api.main:app with reload (PORT, default 8000)
   gradio        python demos/gradio/app.py
   streamlit     streamlit run demos/streamlit/app.py (needs demos/streamlit/requirements.txt)
+  build-index   load the index from cache or S3, or build it (costs Bedrock calls); --check never builds
 
 call a running API (BASE_URL, default http://localhost:$PORT)
   live          GET /health/live
@@ -90,6 +91,9 @@ case "$cmd" in
     ;;
   api)
     exec python -m uvicorn api.main:app --reload --port "$PORT" "$@"
+    ;;
+  build-index)
+    python -m tools.build_index "$@"
     ;;
   gradio)
     exec python demos/gradio/app.py "$@"

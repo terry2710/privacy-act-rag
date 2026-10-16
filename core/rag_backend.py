@@ -28,7 +28,7 @@ from core import rag_logging
 #                                    Hit@4 64.0%/MRR 0.450 on data/retrieval_eval.json)
 #   PRV_EMBEDDING_PROVIDER=bge-ft  - the same base model, fine-tuned on
 #                                    data/finetune_confirmed.json (step 1.3; see
-#                                    finetune_bge_kaggle.py). Hit@4 84.0%/MRR 0.780 on the same
+#                                    tools/finetune_bge_kaggle.py). Hit@4 84.0%/MRR 0.780 on the same
 #                                    benchmark - closes most of the numbered-APP/section gap
 #                                    that motivated the fine-tune, and MRR now exceeds Titan's.
 # PRV_OPEN_EMBEDDING_MODEL_ID overrides the model id for either "bge" or "bge-ft" - useful for
@@ -163,7 +163,7 @@ def _make_embeddings():
         BGE, like Titan v2, must be unit-normalised for that shortcut to hold.
     "bge-ft": the same code path as "bge", pointed at greecehalf/bge-base-privacy-act-ft by
         default - BAAI/bge-base-en-v1.5 fine-tuned on this project's own labeled questions
-        (roadmap step 1.3, see finetune_bge_kaggle.py). Trained with no query instruction
+        (roadmap step 1.3, see tools/finetune_bge_kaggle.py). Trained with no query instruction
         prefix specifically so it matches how this function calls it below - see that script's
         "why no query instruction prefix" note.
     """
@@ -182,39 +182,53 @@ def _make_embeddings():
     raise ValueError(f"Unknown PRV_EMBEDDING_PROVIDER: {EMBEDDING_PROVIDER!r}")
 
 
-# 5b. Wrap within a function
+# 2. Load a cached index from local disk or S3 without ever building one
+def prv_load_cached_index(progress_callback=None, embeddings=None):
+    def report(stage, done=None, total=None):
+        if progress_callback:
+            progress_callback(stage, done, total)
+
+    if not _index_is_cached():
+        report("Checking S3 for cached index")
+        if _download_index_from_s3(report):
+            report("Downloaded cached index from S3")
+
+    if not _index_is_cached():
+        return None
+
+    report("Loading cached index")
+    db_index = FAISS.load_local(
+        INDEX_DIR, embeddings or _make_embeddings(), allow_dangerous_deserialization=True
+    )
+    report("Loaded cached index", 1, 1)
+    return db_index
+
+
+# 3. Build the index when no cached copy exists
 def prv_index(progress_callback=None, max_workers=1, min_interval=1):
     # progress_callback(stage: str, done: int | None, total: int | None) -> None, called at each step.
     def report(stage, done=None, total=None):
         if progress_callback:
             progress_callback(stage, done, total)
 
-    # 4. Create Embeddings -- Client connection
+    # 3a. Create embeddings and reuse a cached index when one exists
     data_embeddings = _make_embeddings()
 
-    # 0a. Local cache first (fastest, free) - if missing, try restoring from S3 before rebuilding.
-    if not _index_is_cached():
-        report("Checking S3 for cached index")
-        if _download_index_from_s3(report):
-            report("Downloaded cached index from S3")
+    cached = prv_load_cached_index(progress_callback, embeddings=data_embeddings)
+    if cached is not None:
+        return cached
 
-    if _index_is_cached():
-        report("Loading cached index")
-        db_index = FAISS.load_local(INDEX_DIR, data_embeddings, allow_dangerous_deserialization=True)
-        report("Loaded cached index", 1, 1)
-        return db_index
-
-    # 2. Define the data source and load data with PDFLoader
+    # 3b. Define the data source and load data with PDFLoader
     report("Loading PDF")
     data_load = PyPDFLoader('https://www.legislation.gov.au/C2004A03712/2026-06-04/2026-06-04/text/original/pdf')
     documents = data_load.load()
 
-    # 3. Split the Text based on Character, Tokens etc. - Recursively split by character - ["\n\n", "\n", " ", ""]
+    # 3c. Split the Text based on Character, Tokens etc. - Recursively split by character - ["\n\n", "\n", " ", ""]
     report("Splitting text")
     data_split = RecursiveCharacterTextSplitter(separators=["\n\n", "\n", " ", ""], chunk_size=1500, chunk_overlap=200)
     chunks = data_split.split_documents(documents)
 
-    # 5a. Embed chunks. Bedrock enforces a per-account requests/min quota, so that path embeds
+    # 3d. Embed chunks. Bedrock enforces a per-account requests/min quota, so that path embeds
     # one chunk at a time across a small thread pool with a pacing sleep between calls. Open
     # sentence-transformers models run locally with nothing to rate-limit, so a single batched
     # call is both simpler and far faster than the same one-by-one loop would be.
@@ -251,7 +265,7 @@ def prv_index(progress_callback=None, max_workers=1, min_interval=1):
             raise
         report("Embedding", total, total)
 
-    # 5b. Build the Vector DB from the pre-computed embeddings, then cache it to disk and S3.
+    # 3e. Build the Vector DB from the pre-computed embeddings, then cache it to disk and S3.
     db_index = FAISS.from_embeddings(list(zip(texts, vectors)), data_embeddings, metadatas=metadatas)
     report("Saving index to disk")
     db_index.save_local(INDEX_DIR)
@@ -262,7 +276,7 @@ def prv_index(progress_callback=None, max_workers=1, min_interval=1):
     return db_index
 
 
-# 6a. Write a function to connect to Bedrock Foundation Model - Claude Foundation Model
+# 4. Write a function to connect to the Bedrock foundation model (Amazon Nova Pro)
 def prv_llm():
     llm = ChatBedrock(
         region_name=AWS_REGION,
@@ -272,7 +286,7 @@ def prv_llm():
     return llm
 
 
-# 6b. Write a function which searches the user prompt, searches the best match from Vector DB and sends both to LLM.
+# 5. Write a function which searches the user prompt, searches the best match from Vector DB and sends both to LLM.
 # Retrieval is called explicitly rather than piped into an LCEL chain (retriever | format_docs) so the
 # chunks - and their similarity scores - are in hand for the CloudWatch Q&A log.
 def prv_rag_response(index, question, k=RETRIEVER_K, session_id=None, return_details=False):

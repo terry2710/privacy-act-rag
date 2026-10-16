@@ -1,5 +1,7 @@
 import logging
+import threading
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -13,13 +15,22 @@ from api.schemas import (
     QueryRequest,
     QueryResponse,
 )
-from api.service import RagService
+from api.service import IndexNotReady, RagService
 
 logger = logging.getLogger("api")
 
+RETRY_AFTER_SECONDS = "30"
+
 
 def create_app(service=None, repository=None):
-    app = FastAPI(title="Privacy Act RAG API", version="0.2.0")
+    @asynccontextmanager
+    async def lifespan(app):
+        threading.Thread(
+            target=app.state.service.warm_up, name="index-warm-up", daemon=True
+        ).start()
+        yield
+
+    app = FastAPI(title="Privacy Act RAG API", version="0.3.0", lifespan=lifespan)
     app.state.service = service or RagService()
     app.state.repository = repository or build_repository()
 
@@ -43,11 +54,20 @@ def create_app(service=None, repository=None):
     @app.post(
         "/api/queries",
         response_model=QueryResponse,
-        responses={502: {"model": ErrorResponse}},
+        responses={502: {"model": ErrorResponse}, 503: {"model": ErrorResponse}},
     )
     def create_query(body: QueryRequest, background_tasks: BackgroundTasks):
         try:
             result = app.state.service.answer(body.question, body.session_id)
+        except IndexNotReady:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": "index_not_ready",
+                    "message": "The search index is still loading. Please retry shortly.",
+                },
+                headers={"Retry-After": RETRY_AFTER_SECONDS},
+            )
         except Exception:
             logger.exception("query failed")
             return JSONResponse(
