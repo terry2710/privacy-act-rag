@@ -17,6 +17,9 @@ fi
 PORT="${PORT:-8000}"
 BASE_URL="${BASE_URL:-http://localhost:$PORT}"
 OFFLINE_MARKERS="not aws and not index"
+K8S_NAMESPACE="privacy-act-rag"
+KIND_CLUSTER="prag"
+IMAGE_TAG="$(git describe --always --dirty 2>/dev/null || echo dev)"
 
 usage() {
   cat <<'USAGE'
@@ -53,10 +56,13 @@ stack
 
 cluster
   kind-up       create the kind cluster
-  kind-load     load the application image into kind
   kind-down     delete the kind cluster
-  k-secret      create the database secret in the cluster
-  k-apply       apply the manifests in infra/k8s
+  k-secrets     create the namespace, database secret and AWS credentials secret
+  k-deploy      build, load into kind and roll out the image tagged with the git revision
+  k-migrate     run the database migration Job with the current image
+  k-status      list pods, deployments, services and jobs
+  k-logs        follow the api logs
+  k-forward     port-forward the api service to localhost:PORT
   tf-check      terraform fmt, init and validate
   helm-lint     helm lint the chart
 
@@ -124,7 +130,7 @@ case "$cmd" in
     docker compose down "$@"
     ;;
   stack)
-    APP_VERSION="$(git rev-parse --short HEAD)" docker compose up --build "$@"
+    APP_VERSION="$IMAGE_TAG" docker compose up --build "$@"
     ;;
   stack-migrate)
     docker compose run --rm api python -m alembic -c migrations/alembic.ini upgrade head
@@ -139,7 +145,7 @@ case "$cmd" in
     python -m alembic -c migrations/alembic.ini check
     ;;
   image)
-    docker build --build-arg APP_VERSION="$(git rev-parse --short HEAD)" -t privacy-act-rag:dev -t "privacy-act-rag:$(git rev-parse --short HEAD)" .
+    docker build --build-arg APP_VERSION="$IMAGE_TAG" -t privacy-act-rag:dev -t "privacy-act-rag:$IMAGE_TAG" .
     ;;
   web)
     cd frontend
@@ -154,19 +160,39 @@ case "$cmd" in
     ;;
   kind-up)
     kind create cluster --config infra/kind/kind-config.yaml
-    ;;
-  kind-load)
-    kind load docker-image privacy-act-rag:dev --name prag
+    kubectl cluster-info --context "kind-$KIND_CLUSTER"
     ;;
   kind-down)
-    kind delete cluster --name prag
+    kind delete cluster --name "$KIND_CLUSTER"
     ;;
-  k-secret)
-    kubectl -n privacy-act-rag create secret generic api-secrets --from-literal=database-url=postgresql+psycopg://app:app@postgres:5432/privacyrag --dry-run=client -o yaml | kubectl apply -f -
+  k-secrets)
+    kubectl create namespace "$K8S_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n "$K8S_NAMESPACE" create secret generic api-secrets --from-literal=database-url=postgresql+psycopg://app:app@postgres:5432/privacyrag --dry-run=client -o yaml | kubectl apply -f -
+    kubectl -n "$K8S_NAMESPACE" create secret generic aws-credentials --from-file=credentials="$HOME/.aws/credentials" --dry-run=client -o yaml | kubectl apply -f -
     ;;
-  k-apply)
-    kubectl apply -f infra/k8s/namespace.yaml
-    kubectl apply -f infra/k8s/
+  k-deploy)
+    docker build --build-arg APP_VERSION="$IMAGE_TAG" -t privacy-act-rag:dev -t "privacy-act-rag:$IMAGE_TAG" .
+    archive="$(mktemp -t prag-image)"
+    docker save -o "$archive" "privacy-act-rag:$IMAGE_TAG"
+    kind load image-archive "$archive" --name "$KIND_CLUSTER"
+    rm -f "$archive"
+    kubectl kustomize infra/k8s | sed "s#privacy-act-rag:dev#privacy-act-rag:$IMAGE_TAG#" | kubectl apply -f -
+    kubectl -n "$K8S_NAMESPACE" rollout status deployment/api --timeout=180s
+    ;;
+  k-migrate)
+    kubectl -n "$K8S_NAMESPACE" delete job migrate --ignore-not-found
+    sed "s#privacy-act-rag:dev#privacy-act-rag:$IMAGE_TAG#" infra/k8s/jobs/migrate.yaml | kubectl apply -f -
+    kubectl -n "$K8S_NAMESPACE" wait --for=condition=complete job/migrate --timeout=180s
+    kubectl -n "$K8S_NAMESPACE" logs job/migrate
+    ;;
+  k-status)
+    kubectl -n "$K8S_NAMESPACE" get pods,deployments,services,jobs
+    ;;
+  k-logs)
+    kubectl -n "$K8S_NAMESPACE" logs deployment/api -f
+    ;;
+  k-forward)
+    kubectl -n "$K8S_NAMESPACE" port-forward service/api "$PORT:8000"
     ;;
   tf-check)
     terraform -chdir=infra/terraform fmt -check -recursive

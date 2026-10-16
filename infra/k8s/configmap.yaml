@@ -5,7 +5,7 @@ metadata:
   namespace: privacy-act-rag
 data:
   AWS_DEFAULT_REGION: "us-east-1"
+  AWS_SHARED_CREDENTIALS_FILE: "/var/run/aws/credentials"
   PRV_EMBEDDING_PROVIDER: "bedrock"
-  PRV_S3_BUCKET: ""
-  SQS_ENDPOINT_URL: "http://elasticmq:9324"
-  SQS_QUEUE_NAME: "ingestion"
+  PRV_S3_BUCKET: "privacy-act-rag-index"
+  PRV_LOG_GROUP: ""

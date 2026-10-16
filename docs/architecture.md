@@ -13,7 +13,7 @@ Target architecture for the full-stack upgrade. Each component carries a status,
 | Ingestion (S3, SQS, worker) | Asynchronous document parsing and indexing | Skeleton only |
 | Compliance agent (LangGraph, MCP) | Clause-by-clause analysis with citations | Planned |
 | Web front end (React, TypeScript) | Upload, progress, streamed answers, citations | Scaffold and typed client only |
-| Containers and Kubernetes | kind for development, EKS for the demo release | Manifests drafted |
+| Containers and Kubernetes | kind for development, EKS for the demo release | API, Postgres and migration Job run on kind; ingress and remaining workloads pending |
 | Infrastructure as code (Terraform) | ECR now, cluster and identity later | Skeleton only |
 | Gradio app (demos/gradio) | Always-on public demo on Hugging Face Spaces | Built, pre-existing |
 | Streamlit demo (demos/streamlit) | Detached demo on Streamlit Community Cloud, outside the product path | Built, relocated |
